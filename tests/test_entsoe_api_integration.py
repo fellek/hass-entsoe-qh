@@ -6,7 +6,9 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+project_root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(project_root))
+sys.path.insert(0, str(project_root / "custom_components"))
 
 from entsoe_qh_shared.api import EntsoeApiClient
 from entsoe_qh_shared.constants import (

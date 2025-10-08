@@ -19,7 +19,7 @@ except ModuleNotFoundError:  # pragma: no cover - fallback dla środowisk bez ai
     class ClientError(Exception):
         """Awaryjna definicja błędu klienta HTTP."""
 
-from entsoe_qh_shared.constants import (
+from .constants import (
     ATTR_PRICES_TODAY,
     ATTR_PRICES_TOMORROW,
     ATTR_RAW_PRICE,
