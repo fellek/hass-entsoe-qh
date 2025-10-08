@@ -8,6 +8,7 @@ from typing import Any
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 import xml.etree.ElementTree as ET
+from zoneinfo import ZoneInfo
 
 try:  # pragma: no cover - opcjonalne importowanie dla środowiska Home Assistant
     from aiohttp import ClientError, ClientSession
@@ -38,6 +39,8 @@ class PricePoint:
 
 
 class EntsoeApiClient:
+    ENTSOE_TIMEZONE = ZoneInfo("Europe/Brussels")
+
     def __init__(
         self,
         session: ClientSession | None,
@@ -98,7 +101,7 @@ class EntsoeApiClient:
         return text
 
     def _period_range(self, now: datetime | None) -> tuple[str, str]:
-        current = self._ensure_utc(now)
+        current = self._ensure_utc(now).astimezone(self.ENTSOE_TIMEZONE)
         start_dt = current.replace(hour=0, minute=0, second=0, microsecond=0)
         end_dt = start_dt + timedelta(days=2)
         return start_dt.strftime("%Y%m%d%H%M"), end_dt.strftime("%Y%m%d%H%M")

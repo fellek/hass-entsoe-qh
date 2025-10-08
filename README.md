@@ -4,7 +4,7 @@ Integracja HACS dla Home Assistanta zapewniająca odczyt cen energii elektryczne
 
 ## Funkcje
 
-- Automatyczne pobieranie dokumentu A44 dla bieżącego oraz kolejnego dnia (UTC) co 30 minut.
+- Automatyczne pobieranie dokumentu A44 dla bieżącego oraz kolejnego dnia (CET/CEST) co 30 minut.
 - Obsługa rozdzielczości PT15M (96 punktów na dobę) i wyliczanie średniej godzinowej.
 - Przeliczanie cen z EUR/MWh na wybraną walutę (EUR lub PLN) oraz jednostkę energii (kWh lub MWh).
 - Możliwość doliczenia podatku VAT i zastosowania własnego kursu walutowego.
