@@ -1,0 +1,11 @@
+{
+  "domain": "entsoe_qh",
+  "name": "ENTSO-E Quarter-Hour Prices",
+  "version": "0.1.0",
+  "documentation": "https://github.com/example/hass-entsoe-qh",
+  "requirements": [],
+  "codeowners": ["@your-github"],
+  "config_flow": true,
+  "iot_class": "cloud_polling",
+  "integration_type": "hub"
+}

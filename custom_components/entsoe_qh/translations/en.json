@@ -1,0 +1,35 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "ENTSO-E Quarter-Hour",
+        "description": "Skonfiguruj integrację z API ENTSO-E.",
+        "data": {
+          "security_token": "Token API",
+          "in_domain": "Kod obszaru (wejście)",
+          "out_domain": "Kod obszaru (wyjście)",
+          "currency": "Waluta ceny",
+          "energy_unit": "Jednostka energii",
+          "currency_rate": "Kurs waluty względem EUR",
+          "vat": "Stawka VAT (%)"
+        }
+      },
+      "options": {
+        "title": "Opcje ENTSO-E",
+        "description": "Aktualizuj ustawienia integracji.",
+        "data": {
+          "security_token": "Token API",
+          "in_domain": "Kod obszaru (wejście)",
+          "out_domain": "Kod obszaru (wyjście)",
+          "currency": "Waluta ceny",
+          "energy_unit": "Jednostka energii",
+          "currency_rate": "Kurs waluty względem EUR",
+          "vat": "Stawka VAT (%)"
+        }
+      }
+    },
+    "error": {
+      "required": "To pole jest wymagane."
+    }
+  }
+}
