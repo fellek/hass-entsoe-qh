@@ -2,7 +2,7 @@
 
 Integracja HACS dla Home Assistanta zapewniająca odczyt cen energii elektrycznej z API ENTSO-E w rozdzielczości kwartogodzinnej.
 
-**Aktualna wersja:** 0.1.3
+**Aktualna wersja:** 0.1.4
 
 ## Funkcje
 
