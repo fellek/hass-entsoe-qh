@@ -8,7 +8,7 @@ from aiohttp import ClientSession
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from custom_components.entsoe_qh_shared.api import EntsoeApiClient, EntsoeApiError
+from .shared.api import EntsoeApiClient, EntsoeApiError
 
 _LOGGER = logging.getLogger(__name__)
 

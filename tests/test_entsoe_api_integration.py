@@ -9,9 +9,10 @@ import pytest
 project_root = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(project_root))
 sys.path.insert(0, str(project_root / "custom_components"))
+sys.path.insert(0, str(project_root / "custom_components" / "entsoe_qh"))
 
-from custom_components.entsoe_qh_shared.api import EntsoeApiClient
-from custom_components.entsoe_qh_shared.constants import (
+from shared.api import EntsoeApiClient
+from shared.constants import (
     ATTR_PRICES_TODAY,
     ATTR_PRICES_TOMORROW,
     ATTR_RAW_PRICE,
