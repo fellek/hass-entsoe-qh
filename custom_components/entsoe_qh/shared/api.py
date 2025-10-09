@@ -50,8 +50,7 @@ class EntsoeApiClient:
         self,
         session: ClientSession | None,
         security_token: str,
-        in_domain: str,
-        out_domain: str,
+        domain: str,
         currency: str,
         energy_unit: str,
         vat: float,
@@ -59,8 +58,7 @@ class EntsoeApiClient:
     ) -> None:
         self.session = session
         self.security_token = security_token
-        self.in_domain = in_domain
-        self.out_domain = out_domain
+        self.domain = domain
         self.currency = currency
         self.energy_unit = energy_unit
         self.vat = vat
@@ -78,8 +76,8 @@ class EntsoeApiClient:
         params = {
             "securityToken": self.security_token,
             "documentType": "A44",
-            "in_Domain": self.in_domain,
-            "out_Domain": self.out_domain,
+            "in_Domain": self.domain,
+            "out_Domain": self.domain,
             "periodStart": start,
             "periodEnd": end,
         }

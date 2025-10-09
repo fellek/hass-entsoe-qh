@@ -7,9 +7,6 @@
         "data": {
           "security_token": "API token",
           "domain": "Area (country and tariff)",
-          "use_separate_domains": "Configure separate entry and exit areas",
-          "in_domain": "Entry area",
-          "out_domain": "Exit area",
           "currency": "Price currency",
           "energy_unit": "Energy unit",
           "currency_rate": "Exchange rate versus EUR",
@@ -22,9 +19,6 @@
         "data": {
           "security_token": "API token",
           "domain": "Area (country and tariff)",
-          "use_separate_domains": "Configure separate entry and exit areas",
-          "in_domain": "Entry area",
-          "out_domain": "Exit area",
           "currency": "Price currency",
           "energy_unit": "Energy unit",
           "currency_rate": "Exchange rate versus EUR",

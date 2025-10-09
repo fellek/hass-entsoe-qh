@@ -31,8 +31,7 @@ def test_entsoe_api_client_real_api_returns_prices():
     client = EntsoeApiClient(
         session=None,
         security_token=security_token,
-        in_domain=DEFAULT_DOMAIN,
-        out_domain=DEFAULT_DOMAIN,
+        domain=DEFAULT_DOMAIN,
         currency=DEFAULT_CURRENCY,
         energy_unit=DEFAULT_ENERGY_UNIT,
         vat=0.0,

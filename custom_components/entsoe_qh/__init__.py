@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from typing import Any
 import logging
 
 from homeassistant.config_entries import ConfigEntry
@@ -12,12 +13,11 @@ from .const import (
     CONF_CURRENCY_RATE,
     CONF_DOMAIN,
     CONF_ENERGY_UNIT,
-    CONF_IN_DOMAIN,
-    CONF_OUT_DOMAIN,
-    CONF_USE_SEPARATE_DOMAINS,
     CONF_SECURITY_TOKEN,
     CONF_VAT,
+    DEFAULT_CURRENCY,
     DEFAULT_DOMAIN,
+    DEFAULT_ENERGY_UNIT,
     DOMAIN,
     PLATFORMS,
 )
@@ -26,58 +26,50 @@ from .coordinator import EntsoeCoordinator
 _LOGGER = logging.getLogger(__name__)
 
 
+def _sanitize_entry_data(data: dict[str, Any]) -> dict[str, Any]:
+    domain = (
+        data.get(CONF_DOMAIN)
+        or data.get("out_domain")
+        or data.get("in_domain")
+        or DEFAULT_DOMAIN
+    )
+
+    sanitized = {
+        **data,
+        CONF_DOMAIN: domain,
+    }
+    sanitized.pop("in_domain", None)
+    sanitized.pop("out_domain", None)
+    sanitized.pop("use_separate_domains", None)
+    sanitized.setdefault(CONF_CURRENCY, DEFAULT_CURRENCY)
+    sanitized.setdefault(CONF_ENERGY_UNIT, DEFAULT_ENERGY_UNIT)
+    sanitized.setdefault(CONF_VAT, 0.0)
+    sanitized.setdefault(CONF_CURRENCY_RATE, 1.0)
+    return sanitized
+
+
+async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
+    new_data = _sanitize_entry_data(dict(config_entry.data))
+    if new_data != config_entry.data or config_entry.version != 2:
+        hass.config_entries.async_update_entry(config_entry, data=new_data, version=2)
+    return True
+
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     session = async_get_clientsession(hass)
-    entry_data = dict(entry.data)
-    domain = entry_data.get(CONF_DOMAIN)
-    in_domain = entry_data.get(CONF_IN_DOMAIN)
-    out_domain = entry_data.get(CONF_OUT_DOMAIN)
-    use_separate = entry_data.get(CONF_USE_SEPARATE_DOMAINS)
-
-    if domain is None:
-        if in_domain is not None and out_domain is not None and in_domain == out_domain:
-            domain = in_domain
-        elif out_domain is not None:
-            domain = out_domain
-        elif in_domain is not None:
-            domain = in_domain
-        else:
-            domain = DEFAULT_DOMAIN
-
-    if in_domain is None:
-        in_domain = domain
-    if out_domain is None:
-        out_domain = domain
-    if use_separate is None:
-        use_separate = in_domain != out_domain
-
-    updated_data = {**entry_data, CONF_DOMAIN: domain, CONF_USE_SEPARATE_DOMAINS: use_separate}
-    if use_separate:
-        updated_data[CONF_IN_DOMAIN] = in_domain
-        updated_data[CONF_OUT_DOMAIN] = out_domain
-    else:
-        updated_data.pop(CONF_IN_DOMAIN, None)
-        updated_data.pop(CONF_OUT_DOMAIN, None)
-
-    if updated_data != entry.data:
-        hass.config_entries.async_update_entry(entry, data=updated_data)
-        entry_data = updated_data
+    entry_data = _sanitize_entry_data(dict(entry.data))
+    if entry_data != entry.data:
+        hass.config_entries.async_update_entry(entry, data=entry_data, version=2)
     else:
         entry_data = {**entry_data}
 
-    if entry_data.get(CONF_USE_SEPARATE_DOMAINS):
-        coordinator_in_domain = entry_data.get(CONF_IN_DOMAIN, domain)
-        coordinator_out_domain = entry_data.get(CONF_OUT_DOMAIN, domain)
-    else:
-        coordinator_in_domain = domain
-        coordinator_out_domain = domain
+    domain = entry_data[CONF_DOMAIN]
 
     coordinator = EntsoeCoordinator(
         hass=hass,
         session=session,
         security_token=entry_data[CONF_SECURITY_TOKEN],
-        in_domain=coordinator_in_domain,
-        out_domain=coordinator_out_domain,
+        domain=domain,
         currency=entry_data[CONF_CURRENCY],
         energy_unit=entry_data[CONF_ENERGY_UNIT],
         vat=entry_data[CONF_VAT],
