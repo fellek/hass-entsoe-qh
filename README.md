@@ -1,5 +1,7 @@
 # hass-entsoe-qh
 
+[![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
+
 Integracja HACS dla Home Assistanta zapewniająca odczyt cen energii elektrycznej z API ENTSO-E w rozdzielczości kwartogodzinnej.
 
 **Aktualna wersja:** 0.2.0
