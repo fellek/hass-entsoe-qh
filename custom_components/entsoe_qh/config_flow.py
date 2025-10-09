@@ -40,6 +40,8 @@ DOMAIN_SELECTOR = selector.SelectSelector(
     )
 )
 
+BOOLEAN_SELECTOR = selector.BooleanSelector()
+
 
 def _resolve_domain(data: dict[str, Any]) -> str:
     domain = data.get(CONF_DOMAIN)
@@ -106,7 +108,7 @@ def _build_domain_schema(
         vol.Required(
             CONF_USE_SEPARATE_DOMAINS,
             default=defaults.get(CONF_USE_SEPARATE_DOMAINS, use_separate),
-        ): bool,
+        ): BOOLEAN_SELECTOR,
     }
     if use_separate:
         schema[vol.Required(
@@ -136,6 +138,12 @@ class EntsoeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         )
 
         if user_input is not None:
+            security_token = user_input.get(CONF_SECURITY_TOKEN)
+            if security_token is None or security_token.strip() == "":
+                errors[CONF_SECURITY_TOKEN] = "required"
+            else:
+                user_input[CONF_SECURITY_TOKEN] = security_token.strip()
+
             currency = user_input[CONF_CURRENCY]
             currency_rate = user_input.get(CONF_CURRENCY_RATE)
             if currency != "EUR" and (currency_rate is None or currency_rate <= 0):
@@ -153,8 +161,8 @@ class EntsoeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if not errors:
                 normalized = _normalize_domain_settings(user_input)
                 if normalized.get(CONF_USE_SEPARATE_DOMAINS):
-                    in_domain = user_input[CONF_IN_DOMAIN]
-                    out_domain = user_input[CONF_OUT_DOMAIN]
+                    in_domain = normalized[CONF_IN_DOMAIN]
+                    out_domain = normalized[CONF_OUT_DOMAIN]
                     unique_id = f"{in_domain}_{out_domain}"
                 else:
                     domain = normalized[CONF_DOMAIN]
@@ -163,14 +171,10 @@ class EntsoeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(title="ENTSO-E", data=normalized)
 
-        security_token_default = submitted.get(CONF_SECURITY_TOKEN)
-        schema_fields: dict[Any, Any]
-        if security_token_default is None:
-            schema_fields = {vol.Required(CONF_SECURITY_TOKEN): str}
-        else:
-            schema_fields = {
-                vol.Required(CONF_SECURITY_TOKEN, default=security_token_default): str
-            }
+        security_token_default = submitted.get(CONF_SECURITY_TOKEN, "")
+        schema_fields: dict[Any, Any] = {
+            vol.Optional(CONF_SECURITY_TOKEN, default=security_token_default): str
+        }
 
         schema_fields.update(
             _build_domain_schema(defaults=submitted, use_separate=use_separate)

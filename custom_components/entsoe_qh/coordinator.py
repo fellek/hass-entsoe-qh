@@ -30,7 +30,7 @@ class EntsoeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         super().__init__(
             hass,
             _LOGGER,
-            name="ENTSO-E Quarter-Hour",
+            name="ENTSO-E Energy Prices",
             update_interval=update_interval,
         )
         self.api_client = EntsoeApiClient(

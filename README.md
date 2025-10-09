@@ -1,10 +1,10 @@
-# hass-entsoe-qh
+# ENTSO-E integracja cen energii
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
 
 Integracja HACS dla Home Assistanta zapewniająca odczyt cen energii elektrycznej z API ENTSO-E w rozdzielczości kwartogodzinnej.
 
-**Aktualna wersja:** 0.2.1
+**Aktualna wersja:** 0.2.2
 
 ## Funkcje
 
@@ -20,8 +20,8 @@ Integracja HACS dla Home Assistanta zapewniająca odczyt cen energii elektryczne
 ## Instalacja
 
 1. Dodaj repozytorium do HACS jako niestandardowe.
-2. Zainstaluj integrację `ENTSO-E Quarter-Hour`.
-3. W Home Assistant przejdź do `Ustawienia → Urządzenia i usługi → Dodaj integrację` i wybierz `ENTSO-E Quarter-Hour`.
+2. Zainstaluj integrację `ENTSO-E Energy Prices`.
+3. W Home Assistant przejdź do `Ustawienia → Urządzenia i usługi → Dodaj integrację` i wybierz `ENTSO-E Energy Prices`.
 4. Podaj token API ENTSO-E oraz skonfiguruj pozostałe parametry (obszar, waluta, kurs walutowy, VAT).
 
 ## Konfiguracja

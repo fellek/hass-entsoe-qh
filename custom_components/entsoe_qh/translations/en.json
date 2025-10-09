@@ -2,38 +2,38 @@
   "config": {
     "step": {
       "user": {
-        "title": "ENTSO-E Quarter-Hour",
-        "description": "Skonfiguruj integrację z API ENTSO-E.",
+        "title": "ENTSO-E Energy Prices",
+        "description": "Configure the integration with the ENTSO-E API.",
         "data": {
-          "security_token": "Token API",
-          "domain": "Obszar (kraj i taryfa)",
-          "use_separate_domains": "Skonfiguruj osobne obszary wejścia/wyjścia",
-          "in_domain": "Obszar wejściowy",
-          "out_domain": "Obszar wyjściowy",
-          "currency": "Waluta ceny",
-          "energy_unit": "Jednostka energii",
-          "currency_rate": "Kurs waluty względem EUR",
-          "vat": "Stawka VAT (%)"
+          "security_token": "API token",
+          "domain": "Area (country and tariff)",
+          "use_separate_domains": "Configure separate entry and exit areas",
+          "in_domain": "Entry area",
+          "out_domain": "Exit area",
+          "currency": "Price currency",
+          "energy_unit": "Energy unit",
+          "currency_rate": "Exchange rate versus EUR",
+          "vat": "VAT rate (%)"
         }
       },
       "options": {
-        "title": "Opcje ENTSO-E",
-        "description": "Aktualizuj ustawienia integracji.",
+        "title": "ENTSO-E Options",
+        "description": "Update integration settings.",
         "data": {
-          "security_token": "Token API",
-          "domain": "Obszar (kraj i taryfa)",
-          "use_separate_domains": "Skonfiguruj osobne obszary wejścia/wyjścia",
-          "in_domain": "Obszar wejściowy",
-          "out_domain": "Obszar wyjściowy",
-          "currency": "Waluta ceny",
-          "energy_unit": "Jednostka energii",
-          "currency_rate": "Kurs waluty względem EUR",
-          "vat": "Stawka VAT (%)"
+          "security_token": "API token",
+          "domain": "Area (country and tariff)",
+          "use_separate_domains": "Configure separate entry and exit areas",
+          "in_domain": "Entry area",
+          "out_domain": "Exit area",
+          "currency": "Price currency",
+          "energy_unit": "Energy unit",
+          "currency_rate": "Exchange rate versus EUR",
+          "vat": "VAT rate (%)"
         }
       }
     },
     "error": {
-      "required": "To pole jest wymagane."
+      "required": "This field is required."
     }
   }
 }

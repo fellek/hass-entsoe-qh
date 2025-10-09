@@ -2,12 +2,12 @@
   "config": {
     "step": {
       "user": {
-        "title": "ENTSO-E Quarter-Hour",
+        "title": "ENTSO-E Ceny Energii",
         "description": "Skonfiguruj integrację z API ENTSO-E.",
         "data": {
           "security_token": "Token API",
           "domain": "Obszar (kraj i taryfa)",
-          "use_separate_domains": "Skonfiguruj osobne obszary wejścia/wyjścia",
+          "use_separate_domains": "Skonfiguruj oddzielne obszary wejścia i wyjścia",
           "in_domain": "Obszar wejściowy",
           "out_domain": "Obszar wyjściowy",
           "currency": "Waluta ceny",
@@ -22,7 +22,7 @@
         "data": {
           "security_token": "Token API",
           "domain": "Obszar (kraj i taryfa)",
-          "use_separate_domains": "Skonfiguruj osobne obszary wejścia/wyjścia",
+          "use_separate_domains": "Skonfiguruj oddzielne obszary wejścia i wyjścia",
           "in_domain": "Obszar wejściowy",
           "out_domain": "Obszar wyjściowy",
           "currency": "Waluta ceny",

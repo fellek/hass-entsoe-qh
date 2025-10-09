@@ -1,5 +1,5 @@
 {
-  "name": "ENTSO-E Quarter-Hour Prices",
+  "name": "ENTSO-E Energy Prices",
   "content_in_root": false,
   "domains": ["sensor"],
   "iot_class": "Cloud Polling",
