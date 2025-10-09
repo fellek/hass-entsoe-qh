@@ -2,7 +2,7 @@
 
 Integracja HACS dla Home Assistanta zapewniająca odczyt cen energii elektrycznej z API ENTSO-E w rozdzielczości kwartogodzinnej.
 
-**Aktualna wersja:** 0.1.4
+**Aktualna wersja:** 0.2.0
 
 ## Funkcje
 
@@ -13,7 +13,7 @@ Integracja HACS dla Home Assistanta zapewniająca odczyt cen energii elektryczne
 - Udostępnienie dwóch sensorów:
   - `Cena energii 15 min` – aktualna cena w bieżącym przedziale 15-minutowym.
   - `Cena energii 1h` – średnia cena dla bieżącej godziny (cztery punkty kwartogodzinne).
-- Atrybuty sensorów zawierają szczegółową listę cen dla dziś i jutra, co umożliwia prezentację prognoz na wykresach.
+- Atrybuty sensorów zawierają szczegółowe listy cen dla dziś i jutra w postaci kompaktowych tablic `[timestamp, value, price_eur_mwh]`, dzięki czemu dane można bezpiecznie przechowywać w bazie i wykorzystywać na wykresach.
 
 ## Instalacja
 
@@ -35,7 +35,7 @@ Integracja HACS dla Home Assistanta zapewniająca odczyt cen energii elektryczne
 
 ## Wykresy cen
 
-Atrybuty sensorów zawierają listy danych dla dziś (`prices_today`) oraz jutra (`prices_tomorrow`) w formacie ISO z wartościami liczbowymi. Można je wykorzystać w kartach `statistics-graph`, `apexcharts-card` lub innych rozwiązaniach wizualizacyjnych do prezentacji zarówno historii, jak i prognoz cenowych.
+Atrybuty sensorów zawierają listy danych dla dziś (`prices_today`) oraz jutra (`prices_tomorrow`) w formie tablic `[timestamp, value, price_eur_mwh]`, gdzie `timestamp` to liczba sekund od epoki w strefie UTC. Porządek pól opisuje atrybut `prices_fields`. Dane można wykorzystać w kartach `statistics-graph`, `apexcharts-card` lub innych rozwiązaniach wizualizacyjnych do prezentacji zarówno historii, jak i prognoz cenowych.
 
 ## Licencja
 

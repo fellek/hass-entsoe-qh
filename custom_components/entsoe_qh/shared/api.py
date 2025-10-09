@@ -22,6 +22,7 @@ except ModuleNotFoundError:  # pragma: no cover - fallback dla środowisk bez ai
 from .constants import (
     ATTR_PRICES_TODAY,
     ATTR_PRICES_TOMORROW,
+    ATTR_PRICE_FIELDS,
     ATTR_RAW_PRICE,
     ATTR_UPDATED_AT,
     ENTSOE_API_URL,
@@ -239,15 +240,33 @@ class EntsoeApiClient:
 
         unit = f"{self.currency}/{self.energy_unit}"
 
+        serialized_prices = self._serialize_prices(converted_points)
+        serialized_today = self._serialize_prices(today_points)
+        serialized_tomorrow = self._serialize_prices(tomorrow_points)
+
         return {
             "unit": unit,
             "current_price": current_price,
             "hour_price": hour_price,
-            "prices": converted_points,
-            ATTR_PRICES_TODAY: today_points,
-            ATTR_PRICES_TOMORROW: tomorrow_points,
+            "prices": serialized_prices,
+            ATTR_PRICES_TODAY: serialized_today,
+            ATTR_PRICES_TOMORROW: serialized_tomorrow,
+            ATTR_PRICE_FIELDS: ["timestamp", "value", ATTR_RAW_PRICE],
             ATTR_UPDATED_AT: datetime.now(timezone.utc).isoformat(),
         }
+
+    def _serialize_prices(self, items: list[dict[str, Any]]) -> list[list[float | int]]:
+        serialized: list[list[float | int]] = []
+        for item in items:
+            timestamp: datetime = item["timestamp"]
+            serialized.append(
+                [
+                    int(timestamp.timestamp()),
+                    float(item["value"]),
+                    float(item[ATTR_RAW_PRICE]),
+                ]
+            )
+        return serialized
 
     def _ensure_utc(self, value: datetime | None) -> datetime:
         if value is None:

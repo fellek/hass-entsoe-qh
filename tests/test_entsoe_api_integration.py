@@ -1,7 +1,6 @@
 import asyncio
 import os
 import sys
-from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -15,6 +14,7 @@ from shared.api import EntsoeApiClient
 from shared.constants import (
     ATTR_PRICES_TODAY,
     ATTR_PRICES_TOMORROW,
+    ATTR_PRICE_FIELDS,
     ATTR_RAW_PRICE,
     ATTR_UPDATED_AT,
     DEFAULT_CURRENCY,
@@ -50,20 +50,28 @@ def test_entsoe_api_client_real_api_returns_prices():
     assert len(prices) > 0
 
     first_point = prices[0]
-    assert "timestamp" in first_point
-    assert isinstance(first_point["timestamp"], datetime)
-    assert isinstance(first_point["value"], float)
-    assert isinstance(first_point[ATTR_RAW_PRICE], float)
+    assert isinstance(first_point, list)
+    assert len(first_point) == 3
+    timestamp_value, converted_value, raw_value = first_point
+    assert isinstance(timestamp_value, int)
+    assert isinstance(converted_value, float)
+    assert isinstance(raw_value, float)
 
     today_prices = data[ATTR_PRICES_TODAY]
     assert isinstance(today_prices, list)
     assert len(today_prices) > 0
 
-    today_timestamps = {item["timestamp"] for item in today_prices}
-    price_timestamps = {item["timestamp"] for item in prices}
+    today_timestamps = {item[0] for item in today_prices}
+    price_timestamps = {item[0] for item in prices}
     assert today_timestamps.issubset(price_timestamps)
 
     assert ATTR_PRICES_TOMORROW in data
+    tomorrow_prices = data[ATTR_PRICES_TOMORROW]
+    assert isinstance(tomorrow_prices, list)
+
+    fields = data[ATTR_PRICE_FIELDS]
+    assert isinstance(fields, list)
+    assert fields == ["timestamp", "value", ATTR_RAW_PRICE]
 
     current_price = data["current_price"]
     assert current_price is None or isinstance(current_price, float)

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
@@ -14,7 +13,7 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import (
     ATTR_PRICES_TODAY,
     ATTR_PRICES_TOMORROW,
-    ATTR_RAW_PRICE,
+    ATTR_PRICE_FIELDS,
     ATTR_UPDATED_AT,
     DOMAIN,
 )
@@ -92,25 +91,12 @@ class EntsoePriceSensor(CoordinatorEntity[EntsoeCoordinator], SensorEntity):
         data = self.coordinator.data or {}
         attributes: dict[str, Any] = {
             ATTR_UPDATED_AT: data.get(ATTR_UPDATED_AT),
-            ATTR_PRICES_TODAY: self._format_prices(data.get(ATTR_PRICES_TODAY, [])),
-            ATTR_PRICES_TOMORROW: self._format_prices(data.get(ATTR_PRICES_TOMORROW, [])),
+            ATTR_PRICE_FIELDS: data.get(ATTR_PRICE_FIELDS, []),
+            "prices": data.get("prices", []),
+            ATTR_PRICES_TODAY: data.get(ATTR_PRICES_TODAY, []),
+            ATTR_PRICES_TOMORROW: data.get(ATTR_PRICES_TOMORROW, []),
         }
-        if data.get("prices") is not None:
-            attributes["prices"] = self._format_prices(data["prices"])
         return attributes
-
-    def _format_prices(self, prices: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        formatted: list[dict[str, Any]] = []
-        for item in prices:
-            timestamp: datetime = item["timestamp"]
-            formatted.append(
-                {
-                    "timestamp": timestamp.isoformat(),
-                    "value": item.get("value"),
-                    ATTR_RAW_PRICE: item.get(ATTR_RAW_PRICE),
-                }
-            )
-        return formatted
 
     @property
     def device_info(self) -> DeviceInfo:
