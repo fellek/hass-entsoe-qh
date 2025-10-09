@@ -4,7 +4,7 @@
 
 Integracja HACS dla Home Assistanta zapewniająca odczyt cen energii elektrycznej z API ENTSO-E w rozdzielczości kwartogodzinnej.
 
-**Aktualna wersja:** 0.2.0
+**Aktualna wersja:** 0.2.1
 
 ## Funkcje
 
@@ -29,7 +29,10 @@ Integracja HACS dla Home Assistanta zapewniająca odczyt cen energii elektryczne
 | Pole | Opis |
 | ---- | ---- |
 | Token API | Klucz bezpieczeństwa uzyskany w portalu ENTSO-E. |
-| Kod obszaru (wejście/wyjście) | Domyślnie `10YPL-AREA-----S` dla Polski. |
+| Obszar (kraj i taryfa) | Wybierz strefę ENTSO-E z listy rozwijanej. Domyślnie `10YPL-AREA-----S` dla Polski. |
+| Skonfiguruj osobne obszary wejścia/wyjścia | Zaznacz, aby odblokować niezależną konfigurację obszarów wejściowego oraz wyjściowego. |
+| Obszar wejściowy | Dostępny po zaznaczeniu opcji zaawansowanej. Pozwala wskazać osobny obszar wejściowy. |
+| Obszar wyjściowy | Dostępny po zaznaczeniu opcji zaawansowanej. Pozwala wskazać osobny obszar wyjściowy. |
 | Waluta ceny | EUR lub PLN. |
 | Jednostka energii | kWh lub MWh. |
 | Kurs waluty względem EUR | Wymagany, jeśli wybrano walutę inną niż EUR. |

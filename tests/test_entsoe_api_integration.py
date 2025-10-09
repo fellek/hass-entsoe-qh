@@ -18,9 +18,8 @@ from shared.constants import (
     ATTR_RAW_PRICE,
     ATTR_UPDATED_AT,
     DEFAULT_CURRENCY,
+    DEFAULT_DOMAIN,
     DEFAULT_ENERGY_UNIT,
-    DEFAULT_IN_DOMAIN,
-    DEFAULT_OUT_DOMAIN,
 )
 
 @pytest.mark.integration
@@ -32,8 +31,8 @@ def test_entsoe_api_client_real_api_returns_prices():
     client = EntsoeApiClient(
         session=None,
         security_token=security_token,
-        in_domain=DEFAULT_IN_DOMAIN,
-        out_domain=DEFAULT_OUT_DOMAIN,
+        in_domain=DEFAULT_DOMAIN,
+        out_domain=DEFAULT_DOMAIN,
         currency=DEFAULT_CURRENCY,
         energy_unit=DEFAULT_ENERGY_UNIT,
         vat=0.0,
