@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "ENTSO-E Energy Prices",
+        "title": "ENTSO-E Energy Prices Integration",
         "description": "Configure the integration with the ENTSO-E API.",
         "data": {
           "security_token": "API token",
@@ -17,7 +17,7 @@
         }
       },
       "options": {
-        "title": "ENTSO-E Options",
+        "title": "ENTSO-E Energy Prices Integration Options",
         "description": "Update integration settings.",
         "data": {
           "security_token": "API token",

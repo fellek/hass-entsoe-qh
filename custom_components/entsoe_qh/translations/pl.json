@@ -2,7 +2,7 @@
   "config": {
     "step": {
       "user": {
-        "title": "ENTSO-E Ceny Energii",
+        "title": "Integracja ENTSO-E Ceny Energii",
         "description": "Skonfiguruj integrację z API ENTSO-E.",
         "data": {
           "security_token": "Token API",
@@ -17,7 +17,7 @@
         }
       },
       "options": {
-        "title": "Opcje ENTSO-E",
+        "title": "Opcje integracji ENTSO-E Ceny Energii",
         "description": "Aktualizuj ustawienia integracji.",
         "data": {
           "security_token": "Token API",

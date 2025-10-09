@@ -43,6 +43,20 @@ DOMAIN_SELECTOR = selector.SelectSelector(
 BOOLEAN_SELECTOR = selector.BooleanSelector()
 
 
+def _coerce_use_separate(value: Any | None) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        lowered = value.strip().lower()
+        if lowered in {"true", "1", "yes", "on"}:
+            return True
+        if lowered in {"false", "0", "no", "off", ""}:
+            return False
+    if isinstance(value, (int, float)):
+        return value != 0
+    return bool(value)
+
+
 def _resolve_domain(data: dict[str, Any]) -> str:
     domain = data.get(CONF_DOMAIN)
     if domain is not None:
@@ -82,7 +96,9 @@ def _resolve_out_domain(data: dict[str, Any], fallback: str) -> str:
 
 def _normalize_domain_settings(data: dict[str, Any]) -> dict[str, Any]:
     normalized = {**data}
-    use_separate = normalized.get(CONF_USE_SEPARATE_DOMAINS, DEFAULT_USE_SEPARATE_DOMAINS)
+    use_separate = _coerce_use_separate(
+        normalized.get(CONF_USE_SEPARATE_DOMAINS, DEFAULT_USE_SEPARATE_DOMAINS)
+    )
     normalized[CONF_USE_SEPARATE_DOMAINS] = use_separate
     if use_separate:
         out_domain = normalized.get(CONF_OUT_DOMAIN)
@@ -104,13 +120,16 @@ def _build_domain_schema(
     defaults: dict[str, Any],
     use_separate: bool,
 ) -> dict[Any, Any]:
+    default_use_separate = _coerce_use_separate(
+        defaults.get(CONF_USE_SEPARATE_DOMAINS, use_separate)
+    )
     schema: dict[Any, Any] = {
         vol.Required(
             CONF_USE_SEPARATE_DOMAINS,
-            default=defaults.get(CONF_USE_SEPARATE_DOMAINS, use_separate),
+            default=default_use_separate,
         ): BOOLEAN_SELECTOR,
     }
-    if use_separate:
+    if default_use_separate:
         schema[vol.Required(
             CONF_IN_DOMAIN,
             default=_resolve_in_domain(defaults, _resolve_domain(defaults)),
@@ -133,9 +152,11 @@ class EntsoeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(self, user_input: dict[str, Any] | None = None):
         errors: dict[str, str] = {}
         submitted = user_input or {}
-        use_separate = submitted.get(
-            CONF_USE_SEPARATE_DOMAINS, DEFAULT_USE_SEPARATE_DOMAINS
+        use_separate = _coerce_use_separate(
+            submitted.get(CONF_USE_SEPARATE_DOMAINS, DEFAULT_USE_SEPARATE_DOMAINS)
         )
+        if submitted:
+            submitted = {**submitted, CONF_USE_SEPARATE_DOMAINS: use_separate}
 
         if user_input is not None:
             security_token = user_input.get(CONF_SECURITY_TOKEN)
@@ -218,10 +239,16 @@ class EntsoeOptionsFlow(config_entries.OptionsFlow):
     async def async_step_options(self, user_input: dict[str, Any] | None = None):
         errors: dict[str, str] = {}
         defaults = user_input or {**self.config_entry.data}
-        use_separate = defaults.get(
-            CONF_USE_SEPARATE_DOMAINS,
-            self.config_entry.data.get(CONF_USE_SEPARATE_DOMAINS, DEFAULT_USE_SEPARATE_DOMAINS),
+        use_separate = _coerce_use_separate(
+            defaults.get(
+                CONF_USE_SEPARATE_DOMAINS,
+                self.config_entry.data.get(
+                    CONF_USE_SEPARATE_DOMAINS, DEFAULT_USE_SEPARATE_DOMAINS
+                ),
+            )
         )
+        if defaults:
+            defaults = {**defaults, CONF_USE_SEPARATE_DOMAINS: use_separate}
 
         if user_input is not None:
             currency = user_input[CONF_CURRENCY]
@@ -243,6 +270,7 @@ class EntsoeOptionsFlow(config_entries.OptionsFlow):
                 return self.async_create_entry(title="", data=normalized)
 
         entry_data = {**self.config_entry.data, **defaults}
+        entry_data[CONF_USE_SEPARATE_DOMAINS] = use_separate
 
         schema_fields: dict[Any, Any] = {
             vol.Required(
