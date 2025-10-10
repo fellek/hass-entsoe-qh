@@ -28,18 +28,23 @@ class EntsoeSensorDescription:
     series_key: str
 
 
-SENSOR_DESCRIPTIONS = (
-    EntsoeSensorDescription(
+SENSOR_DESCRIPTIONS: dict[str, EntsoeSensorDescription] = {
+    "quarter_hour": EntsoeSensorDescription(
         key="quarter_hour",
         translation_key="quarter_hour_price",
         series_key="quarter_hour",
     ),
-    EntsoeSensorDescription(
+    "half_hour": EntsoeSensorDescription(
+        key="half_hour",
+        translation_key="half_hour_price",
+        series_key="half_hour",
+    ),
+    "hour": EntsoeSensorDescription(
         key="hour",
         translation_key="hour_price",
         series_key="hour",
     ),
-)
+}
 
 
 async def async_setup_entry(
@@ -48,9 +53,17 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: EntsoeCoordinator = hass.data[DOMAIN][entry.entry_id]
+    series_data = (coordinator.data or {}).get(ATTR_SERIES, {}) if coordinator.data else {}
+    available_series = {
+        key for key, value in series_data.items() if isinstance(value, dict)
+    }
+    if not available_series:
+        available_series = {"hour"}
+
     entities = [
-        EntsoePriceSensor(coordinator=coordinator, description=description, entry=entry)
-        for description in SENSOR_DESCRIPTIONS
+        EntsoePriceSensor(coordinator=coordinator, description=SENSOR_DESCRIPTIONS[key], entry=entry)
+        for key in SENSOR_DESCRIPTIONS
+        if key in available_series
     ]
     async_add_entities(entities)
 

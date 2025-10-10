@@ -32,15 +32,18 @@
   },
   "entity": {
     "sensor": {
-      "entsoe_qh": {
-        "quarter_hour_price": {
-          "name": "Cena energii 15 min"
-        },
-        "hour_price": {
-          "name": "Cena energii 1h"
+        "entsoe_qh": {
+          "quarter_hour_price": {
+            "name": "Cena energii 15 min"
+          },
+          "half_hour_price": {
+            "name": "Cena energii 30 min"
+          },
+          "hour_price": {
+            "name": "Cena energii 1h"
+          }
         }
       }
-    }
   },
   "device": {
     "entsoe_qh": {

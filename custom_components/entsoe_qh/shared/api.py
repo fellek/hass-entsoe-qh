@@ -47,6 +47,7 @@ class EntsoeApiError(Exception):
 class PricePoint:
     timestamp: datetime
     price_eur_mwh: Decimal
+    resolution_minutes: int
 
 
 @dataclass
@@ -54,6 +55,7 @@ class ConvertedPoint:
     start: datetime
     value: Decimal
     raw_value: Decimal
+    resolution_minutes: int
 
 
 class EntsoeApiClient:
@@ -192,7 +194,13 @@ class EntsoeApiClient:
                     timestamp = start_time + timedelta(
                         minutes=resolution_minutes * (position - 1)
                     )
-                    points.append(PricePoint(timestamp=timestamp, price_eur_mwh=price))
+                    points.append(
+                        PricePoint(
+                            timestamp=timestamp,
+                            price_eur_mwh=price,
+                            resolution_minutes=resolution_minutes,
+                        )
+                    )
 
         points.sort(key=lambda item: item.timestamp)
         return points
@@ -210,7 +218,10 @@ class EntsoeApiClient:
             return None
         normalized = value.strip()
         mapping = {
+            "PT5M": 5,
+            "PT10M": 10,
             "PT15M": 15,
+            "PT20M": 20,
             "PT30M": 30,
             "PT60M": 60,
             "PT1H": 60,
@@ -242,64 +253,47 @@ class EntsoeApiClient:
                     start=point.timestamp,
                     value=converted_value,
                     raw_value=point.price_eur_mwh,
+                    resolution_minutes=point.resolution_minutes,
                 )
             )
 
-        today_points = [item for item in converted_points if item.start.date() == current_time.date()]
-        tomorrow_points = [
-            item
-            for item in converted_points
-            if item.start.date() == (current_time + timedelta(days=1)).date()
-        ]
-
-        price_map = {item.start: item.value for item in converted_points}
-
-        current_slot = current_time.replace(minute=(current_time.minute // 15) * 15)
-        current_price_value = price_map.get(current_slot)
-        if current_price_value is None:
-            future_points = [item for item in converted_points if item.start >= current_time]
-            if future_points:
-                current_price_value = future_points[0].value
-
-        hour_start = current_time.replace(minute=0)
-        hour_slots = [hour_start + timedelta(minutes=15 * idx) for idx in range(4)]
-        hour_values = [price_map.get(slot) for slot in hour_slots if price_map.get(slot) is not None]
-        hour_price_value = (
-            sum(hour_values, Decimal(0)) / Decimal(len(hour_values))
-            if hour_values
-            else current_price_value
-        )
+        converted_points.sort(key=lambda item: item.start)
+        points_by_resolution: dict[int, list[ConvertedPoint]] = {}
+        for item in converted_points:
+            points_by_resolution.setdefault(item.resolution_minutes, []).append(item)
 
         unit = f"{self.currency}/{self.energy_unit}"
-        quarter_hour_series = self._build_series(
-            today_points,
-            tomorrow_points,
-            current_price_value,
-            "PT15M",
-            15,
-        )
+        series: dict[str, Any] = {}
 
-        hour_entries = self._build_hour_entries(converted_points)
-        today_hours = [item for item in hour_entries if item.start.date() == current_time.date()]
-        tomorrow_hours = [
-            item
-            for item in hour_entries
-            if item.start.date() == (current_time + timedelta(days=1)).date()
-        ]
-        hour_series = self._build_series(
-            today_hours,
-            tomorrow_hours,
-            hour_price_value,
-            "PT60M",
-            60,
-        )
+        quarter_points = points_by_resolution.get(15)
+        if quarter_points:
+            series["quarter_hour"] = self._build_series_from_points(
+                quarter_points,
+                15,
+                current_time,
+            )
+
+        half_hour_points = points_by_resolution.get(30)
+        if half_hour_points:
+            series["half_hour"] = self._build_series_from_points(
+                half_hour_points,
+                30,
+                current_time,
+            )
+
+        hour_points = points_by_resolution.get(60)
+        if hour_points is None:
+            hour_points = self._build_hour_entries(converted_points)
+        if hour_points:
+            series["hour"] = self._build_series_from_points(
+                hour_points,
+                60,
+                current_time,
+            )
 
         return {
             "unit": unit,
-            ATTR_SERIES: {
-                "quarter_hour": quarter_hour_series,
-                "hour": hour_series,
-            },
+            ATTR_SERIES: series,
             ATTR_PRICE_FIELDS: [
                 ATTR_PRICE_ID,
                 ATTR_PRICE_START,
@@ -309,16 +303,33 @@ class EntsoeApiClient:
             ATTR_UPDATED_AT: datetime.now(timezone.utc).isoformat(),
         }
 
-    def _build_series(
+    def _build_series_from_points(
         self,
-        today_items: list[ConvertedPoint],
-        tomorrow_items: list[ConvertedPoint],
-        current_value: Decimal | None,
-        resolution: str,
-        duration_minutes: int,
+        items: list[ConvertedPoint],
+        resolution_minutes: int,
+        current_time: datetime,
     ) -> dict[str, Any]:
-        today_serialized = self._serialize_prices(today_items, resolution, duration_minutes)
-        tomorrow_serialized = self._serialize_prices(tomorrow_items, resolution, duration_minutes)
+        today_items = [
+            item for item in items if item.start.date() == current_time.date()
+        ]
+        tomorrow_items = [
+            item
+            for item in items
+            if item.start.date() == (current_time + timedelta(days=1)).date()
+        ]
+        current_value = self._find_current_value(items, resolution_minutes, current_time)
+        resolution_text = self._minutes_to_resolution(resolution_minutes)
+
+        today_serialized = self._serialize_prices(
+            today_items,
+            resolution_text,
+            resolution_minutes,
+        )
+        tomorrow_serialized = self._serialize_prices(
+            tomorrow_items,
+            resolution_text,
+            resolution_minutes,
+        )
         return {
             "current": float(current_value) if current_value is not None else None,
             ATTR_PRICES_TODAY: today_serialized,
@@ -362,10 +373,41 @@ class EntsoeApiClient:
                     raw_value=(raw_sum / count).quantize(
                         Decimal("0.0001"), rounding=ROUND_HALF_UP
                     ),
+                    resolution_minutes=60,
                 )
             )
 
         return sorted(results, key=lambda item: item.start)
+
+    def _find_current_value(
+        self,
+        items: list[ConvertedPoint],
+        resolution_minutes: int,
+        current_time: datetime,
+    ) -> Decimal | None:
+        if not items:
+            return None
+        sorted_items = sorted(items, key=lambda item: item.start)
+        for item in sorted_items:
+            period_end = item.start + timedelta(minutes=resolution_minutes)
+            if item.start <= current_time < period_end:
+                return item.value
+        for item in sorted_items:
+            if item.start >= current_time:
+                return item.value
+        return sorted_items[-1].value
+
+    @staticmethod
+    def _minutes_to_resolution(minutes: int) -> str:
+        mapping = {
+            5: "PT5M",
+            10: "PT10M",
+            15: "PT15M",
+            20: "PT20M",
+            30: "PT30M",
+            60: "PT60M",
+        }
+        return mapping.get(minutes, f"PT{minutes}M")
 
     def _ensure_utc(self, value: datetime | None) -> datetime:
         if value is None:

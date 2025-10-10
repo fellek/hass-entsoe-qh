@@ -104,7 +104,9 @@ def _expected_hour_current(prices: tuple[int, ...], rate: Decimal, vat: Decimal)
         for price in prices
     ]
     quantized = [item.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP) for item in converted]
-    average = sum(quantized, Decimal("0")) / Decimal(len(quantized))
+    average = (sum(quantized, Decimal("0")) / Decimal(len(quantized))).quantize(
+        Decimal("0.0001"), rounding=ROUND_HALF_UP
+    )
     return float(average)
 
 
@@ -145,6 +147,9 @@ def test_get_converted_prices_returns_expected_structure(monkeypatch):
 
     series = data[ATTR_SERIES]
     assert_that(series).is_instance_of(dict)
+    assert_that(series).contains("quarter_hour")
+    assert_that(series).contains("hour")
+    assert_that(series).has_length(2)
 
     quarter_series = series["quarter_hour"]
     assert_that(quarter_series).is_instance_of(dict)
@@ -180,6 +185,8 @@ def test_get_converted_prices_returns_expected_structure(monkeypatch):
     )
     assert_that(quarter_series["current"]).is_equal_to(expected_today[2])
 
+    assert_that("half_hour" in series).is_false()
+
     fields = data[ATTR_PRICE_FIELDS]
     assert_that(fields).is_equal_to([
         ATTR_PRICE_ID,
@@ -187,6 +194,65 @@ def test_get_converted_prices_returns_expected_structure(monkeypatch):
         ATTR_VALUE,
         ATTR_RAW_PRICE,
     ])
+
+
+SAMPLE_HOURLY_XML = """
+<Publication_MarketDocument xmlns="urn:entsoe.eu:wgedi:schema">
+  <TimeSeries>
+    <Period>
+      <timeInterval>
+        <start>2024-01-01T00:00Z</start>
+        <end>2024-01-01T02:00Z</end>
+      </timeInterval>
+      <resolution>PT60M</resolution>
+      <Point>
+        <position>1</position>
+        <price.amount>120</price.amount>
+      </Point>
+      <Point>
+        <position>2</position>
+        <price.amount>180</price.amount>
+      </Point>
+    </Period>
+  </TimeSeries>
+</Publication_MarketDocument>
+""".strip()
+
+
+def test_get_converted_prices_with_hourly_resolution_returns_only_hour_series(monkeypatch):
+    # Arrange
+    async def fake_fetch(self: EntsoeApiClient, start: str, end: str) -> str:  # noqa: ARG001
+        return SAMPLE_HOURLY_XML
+
+    monkeypatch.setattr(EntsoeApiClient, "_fetch_prices_xml", fake_fetch)
+    monkeypatch.setattr(EntsoeApiClient, "ENTSOE_TIMEZONE", None)
+
+    client = EntsoeApiClient(
+        session=None,
+        security_token="token",
+        domain=DEFAULT_DOMAIN,
+        currency=DEFAULT_CURRENCY,
+        energy_unit=DEFAULT_ENERGY_UNIT,
+        vat=0.0,
+        currency_rate=1.0,
+    )
+
+    now = datetime(2024, 1, 1, 0, 30, tzinfo=timezone.utc)
+
+    # Act
+    data = asyncio.run(client.get_converted_prices(now))
+
+    # Assert
+    series = data[ATTR_SERIES]
+    assert_that(series).contains("hour")
+    assert_that(series).has_length(1)
+    assert_that("quarter_hour" in series).is_false()
+    assert_that("half_hour" in series).is_false()
+
+    hour_series = series["hour"]
+    today_values = hour_series[ATTR_PRICES_TODAY][ATTR_VALUE]
+    assert_that(today_values).is_equal_to([0.12, 0.18])
+    assert_that(hour_series["current"]).is_equal_to(0.12)
 
 
 def test_get_converted_prices_without_values_raises(monkeypatch):

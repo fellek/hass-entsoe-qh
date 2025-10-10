@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.5 - 2025-10-12
+
+- Sensors now show up only when ENTSO-E actually provides that resolution, so you no longer see empty hourly or quarter-hour entities.
+- Hourly averages are created automatically when the API offers only 15-minute data, so you still get a familiar hourly view.
+- Documentation now explains that availability depends on your selected bidding zone.
+
 ## 0.4.4 - 2025-10-11
 
 - Tests now run smoothly on both Windows and Linux without requiring a Home Assistant environment.

@@ -4,17 +4,16 @@
 
 Home Assistant integration distributed through HACS that retrieves quarter-hour electricity prices from the ENTSO-E API.
 
-**Current version:** 0.4.4
+**Current version:** 0.4.5
 
 ## Features
 
 - Automatic download of the A44 document for the current and next day (CET/CEST) every 30 minutes.
-- Support for PT15M resolution (96 points per day) and calculation of an hourly average.
+- Automatically detects whether 15-minute, hourly, or both price series are available for your tariff.
+- Support for PT15M resolution (96 points per day) and calculation of an hourly average when needed.
 - Conversion of EUR/MWh prices to the selected currency (EUR or PLN) and energy unit (kWh or MWh).
 - Optional VAT markup and custom exchange rate configuration.
-- Two sensors available:
-  - `15-minute energy price` – current price for the ongoing 15-minute slot.
-  - `Hourly energy price` – average price for the current hour (four quarter-hour points).
+- Sensors appear only for the resolutions supplied by ENTSO-E, so you see 15-minute, hourly, or both prices depending on your area.
 - Sensor attributes provide compact price lists for today and tomorrow as `[timestamp, value, price_eur_mwh]`, ready for storage and charting.
 
 ## Installation
