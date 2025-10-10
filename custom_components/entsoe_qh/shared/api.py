@@ -97,7 +97,6 @@ class EntsoeApiClient:
         params = {
             "securityToken": self.security_token,
             "documentType": "A44",
-            "processType": "A16",
             "in_Domain": self.domain,
             "out_Domain": self.domain,
             "periodStart": start,
