@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Optional
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
+from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
@@ -69,7 +69,6 @@ async def async_setup_entry(
 
 
 class EntsoePriceSensor(CoordinatorEntity[EntsoeCoordinator], SensorEntity):
-    _attr_device_class = SensorDeviceClass.MONETARY
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
@@ -92,6 +91,7 @@ class EntsoePriceSensor(CoordinatorEntity[EntsoeCoordinator], SensorEntity):
             dict[str, Any],
             Optional[str],
         ] | None = None
+        self._stored_unit: Optional[str] = None
 
     @property
     def native_value(self) -> float | None:
@@ -119,6 +119,12 @@ class EntsoePriceSensor(CoordinatorEntity[EntsoeCoordinator], SensorEntity):
 
     def _handle_coordinator_update(self) -> None:
         state, attributes, unit = self._calculate_state_payload()
+        if unit is None and self._stored_unit is not None:
+            unit = self._stored_unit
+        if unit is not None:
+            self._stored_unit = unit
+            if attributes.get("unit_of_measurement") is None:
+                attributes["unit_of_measurement"] = unit
         payload = (state, attributes, unit)
         if self._last_payload == payload:
             return
