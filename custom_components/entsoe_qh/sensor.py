@@ -39,6 +39,7 @@ class EntsoeSensorDescription:
     key: str
     translation_key: str
     series_key: str
+    object_id_suffix: str
 
 
 SENSOR_DESCRIPTIONS = (
@@ -46,11 +47,13 @@ SENSOR_DESCRIPTIONS = (
         key="quarter_hour",
         translation_key="quarter_hour_price",
         series_key="quarter_hour",
+        object_id_suffix="m15",
     ),
     EntsoeSensorDescription(
         key="hour",
         translation_key="hour_price",
         series_key="hour",
+        object_id_suffix="h1",
     ),
 )
 
@@ -83,6 +86,9 @@ class EntsoePriceSensor(CoordinatorEntity[EntsoeCoordinator], SensorEntity):
         self._attr_has_entity_name = True
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
         self._attr_translation_key = description.translation_key
+        self._attr_suggested_object_id = (
+            f"entso_e_energy_prices_{description.object_id_suffix}"
+        )
         self._attr_native_value: float | None = None
         self._attr_extra_state_attributes: dict[str, Any] = {}
         self._attr_native_unit_of_measurement: Optional[str] = None

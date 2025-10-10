@@ -378,10 +378,14 @@ class EntsoeApiClient:
         value_map = {item.start: item.value for item in items}
         selected = value_map.get(slot)
         if selected is None:
-            future_items = [item for item in items if item.start >= slot]
-            if not future_items:
-                return None
-            selected = future_items[0].value
+            past_items = [item for item in items if item.start <= slot]
+            if past_items:
+                selected = past_items[-1].value
+            else:
+                future_items = [item for item in items if item.start >= slot]
+                if not future_items:
+                    return None
+                selected = future_items[0].value
         return self._round_float(selected)
 
     def _stats_for_today(self, values: list[float]) -> dict[str, float]:

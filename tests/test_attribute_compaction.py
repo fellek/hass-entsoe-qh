@@ -241,3 +241,28 @@ def test_sensor_skips_duplicate_updates(api_client: EntsoeApiClient) -> None:
 
     assert first_count == 1
     assert second_count == 1
+
+
+def test_sensor_uses_last_known_price_when_future_slot_missing(
+    api_client: EntsoeApiClient,
+) -> None:
+    coordinator = DummyCoordinator()
+    entry = SimpleNamespace(entry_id="test-entry")
+    sensor = EntsoePriceSensor(
+        coordinator=coordinator,
+        description=SENSOR_DESCRIPTIONS[0],
+        entry=entry,
+    )
+    sensor.hass = SimpleNamespace()
+    sensor.async_write_ha_state = lambda: None
+
+    now = datetime(2025, 1, 5, 23, 59, tzinfo=timezone.utc)
+    points = _build_price_points(now.replace(hour=0, minute=0), 95, 15)
+    coordinator.data = api_client._convert_prices(points, now)
+
+    sensor._handle_coordinator_update()
+
+    assert sensor.native_value is not None
+    expected_value = float(points[-1].price_eur_mwh / Decimal("1000"))
+    assert sensor.native_value == pytest.approx(expected_value, rel=1e-6)
+    assert sensor._attr_suggested_object_id == "entso_e_energy_prices_m15"
