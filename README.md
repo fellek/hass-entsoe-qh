@@ -4,7 +4,7 @@
 
 Home Assistant integration distributed through HACS that retrieves quarter-hour electricity prices from the ENTSO-E API.
 
-**Current version:** 0.3.1
+**Current version:** 0.3.2
 
 ## Features
 
@@ -22,6 +22,8 @@ Home Assistant integration distributed through HACS that retrieves quarter-hour 
 1. Add this repository to HACS as a custom repository.
 2. Install the `ENTSO-E Energy Prices` integration.
 3. In Home Assistant, go to `Settings → Devices & Services → Add Integration` and select `ENTSO-E Energy Prices`.
+
+   ![ENTSO-E integration add window](images/add_integration_window.png)
 4. Provide your ENTSO-E API token (required) and configure the remaining parameters (area, currency, exchange rate, VAT).
 
 ## Configuration
