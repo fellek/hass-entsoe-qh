@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.4.7] - 2025-10-12
+### Fixed
+- Resolved the issue that kept the ENTSO-E sensors stuck at “Unknown” right after configuration.
+
 ## [0.4.6] - 2025-10-11
 ### Fixed
 - Removed the duplicate setup warning so the integration can be added without the `already_configured` message.
