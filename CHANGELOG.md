@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.10 - 2025-10-17
+
+- Fixes the options screen so you can update your ENTSO-E token and area without restarting the integration.
+
 ## 0.4.9 - 2025-10-16
 
 - Price sensor names now spell out their resolution (15 min, 30 min, 1h) so you can instantly pick the right entity.
