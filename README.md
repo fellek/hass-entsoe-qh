@@ -42,9 +42,9 @@ The integration creates a dedicated sensor for each price resolution returned by
 
 | Resolution | Entity name (English UI) | Default entity ID (English UI) |
 | ---------- | ------------------------ | ------------------------------ |
-| 15 minutes | ENTSO-E Energy Prices 15 min | `sensor.entsoe_e_energy_prices_15min` |
-| 30 minutes | ENTSO-E Energy Prices 30 min | `sensor.entsoe_e_energy_prices_30min` |
-| 1 hour     | ENTSO-E Energy Prices 1 h | `sensor.entsoe_e_energy_prices_1h` |
+| 15 minutes | ENTSO-E Energy Prices 15 min | `sensor.entso_e_energy_prices_15_min` |
+| 30 minutes | ENTSO-E Energy Prices 30 min | `sensor.entso_e_energy_prices_30_min` |
+| 1 hour     | ENTSO-E Energy Prices 1 h | `sensor.entso_e_energy_prices_1_h` |
 
 > ℹ️ When Home Assistant runs in Polish, the device name becomes `ENTSO-E Ceny energii`, so the entity IDs start with `sensor.entso_e_ceny_energii_…`. Adjust the examples below to match the entity IDs shown in your instance.
 
@@ -58,7 +58,7 @@ You can visualise the ENTSO-E price sensors in Home Assistant dashboards by usin
 type: custom:mini-graph-card
 name: Energy prices (EUR/kWh)
 entities:
-  - entity: sensor.entsoe_e_energy_prices_15min
+  - entity: sensor.entso_e_energy_prices_15_min
     name: Price
 hours_to_show: 48
 points_per_hour: 4
@@ -144,7 +144,7 @@ apex_config:
         y2: 5.5
         fillColor: rgba(231,76,60,0.08)
 series:
-  - entity: sensor.entsoe_e_energy_prices_15min
+  - entity: sensor.entso_e_energy_prices_15_min
     name: Price
     type: line
     group_by:
