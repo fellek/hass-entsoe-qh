@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.13 - 2025-10-20
+
+- Updated the README so it tells you the integration delivers whichever ENTSO-E resolution your area publishes, not just quarter-hour prices.
+
+## 0.4.12 - 2025-10-19
+
+- Clarified the README so it mirrors how the integration really works, covering the A44 download window, hourly averaging, and the sensor attributes you can use in dashboards.
+
 ## 0.4.11 - 2025-10-18
 
 - Price sensors now show their exact interval (15 min, 30 min, 1 h) in both the name and entity ID, making it easy to pick the right one for automations and dashboards.
