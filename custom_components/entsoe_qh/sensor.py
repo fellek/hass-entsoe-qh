@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Optional
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
@@ -11,10 +11,23 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .const import (
-    ATTR_PRICES_TODAY,
-    ATTR_PRICES_TOMORROW,
-    ATTR_PRICE_FIELDS,
+    ATTR_CURRENT,
+    ATTR_CURRENCY,
+    ATTR_IN_DOMAIN,
+    ATTR_OUT_DOMAIN,
     ATTR_SERIES,
+    ATTR_SOURCE,
+    ATTR_START,
+    ATTR_STEP_MINUTES,
+    ATTR_TODAY,
+    ATTR_TODAY_AVG,
+    ATTR_TODAY_MAX,
+    ATTR_TODAY_MIN,
+    ATTR_TOMORROW,
+    ATTR_TOMORROW_AVG,
+    ATTR_TOMORROW_MAX,
+    ATTR_TOMORROW_MIN,
+    ATTR_UNIT,
     ATTR_UPDATED_AT,
     DOMAIN,
 )
@@ -71,34 +84,26 @@ class EntsoePriceSensor(CoordinatorEntity[EntsoeCoordinator], SensorEntity):
         self._attr_has_entity_name = True
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
         self._attr_translation_key = description.translation_key
+        self._attr_native_value: float | None = None
+        self._attr_extra_state_attributes: dict[str, Any] = {}
+        self._attr_native_unit_of_measurement: Optional[str] = None
+        self._last_payload: tuple[
+            float | None,
+            dict[str, Any],
+            Optional[str],
+        ] | None = None
 
     @property
     def native_value(self) -> float | None:
-        data = self.coordinator.data
-        if data is None:
-            return None
-        series = (data.get(ATTR_SERIES) or {}).get(self.description.series_key, {})
-        value = series.get("current")
-        return None if value is None else float(value)
+        return self._attr_native_value
 
     @property
     def native_unit_of_measurement(self) -> str | None:
-        data = self.coordinator.data
-        if data is None:
-            return None
-        return data.get("unit")
+        return self._attr_native_unit_of_measurement
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        data = self.coordinator.data or {}
-        series = (data.get(ATTR_SERIES) or {}).get(self.description.series_key, {})
-        attributes: dict[str, Any] = {
-            ATTR_UPDATED_AT: data.get(ATTR_UPDATED_AT),
-            ATTR_PRICE_FIELDS: data.get(ATTR_PRICE_FIELDS, []),
-            ATTR_PRICES_TODAY: series.get(ATTR_PRICES_TODAY, []),
-            ATTR_PRICES_TOMORROW: series.get(ATTR_PRICES_TOMORROW, []),
-        }
-        return attributes
+        return self._attr_extra_state_attributes
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -111,3 +116,66 @@ class EntsoePriceSensor(CoordinatorEntity[EntsoeCoordinator], SensorEntity):
     @property
     def should_poll(self) -> bool:
         return False
+
+    def _handle_coordinator_update(self) -> None:
+        state, attributes, unit = self._calculate_state_payload()
+        payload = (state, attributes, unit)
+        if self._last_payload == payload:
+            return
+        self._last_payload = payload
+        self._attr_native_value = state
+        self._attr_extra_state_attributes = attributes
+        self._attr_native_unit_of_measurement = unit
+        super()._handle_coordinator_update()
+
+    def _calculate_state_payload(
+        self,
+    ) -> tuple[float | None, dict[str, Any], Optional[str]]:
+        data = self.coordinator.data or {}
+        series = (data.get(ATTR_SERIES) or {}).get(self.description.series_key)
+        if not series:
+            return None, {}, data.get(ATTR_UNIT)
+
+        state_value = series.get(ATTR_CURRENT)
+        state = float(state_value) if state_value is not None else None
+        attributes = self._create_attributes(data, series)
+        unit = data.get(ATTR_UNIT)
+        return state, attributes, unit
+
+    @staticmethod
+    def _create_attributes(
+        base_data: dict[str, Any],
+        series_data: dict[str, Any],
+    ) -> dict[str, Any]:
+        attributes: dict[str, Any] = {}
+
+        unit = base_data.get(ATTR_UNIT)
+        if unit is not None:
+            attributes["unit_of_measurement"] = unit
+
+        currency = base_data.get(ATTR_CURRENCY)
+        if currency is not None:
+            attributes[ATTR_CURRENCY] = currency
+
+        attributes[ATTR_STEP_MINUTES] = series_data.get(ATTR_STEP_MINUTES)
+        attributes[ATTR_START] = series_data.get(ATTR_START)
+        attributes[ATTR_TODAY] = list(series_data.get(ATTR_TODAY, []))
+
+        for key in (ATTR_TODAY_MIN, ATTR_TODAY_MAX, ATTR_TODAY_AVG):
+            value = series_data.get(key)
+            if value is not None:
+                attributes[key] = value
+
+        if ATTR_TOMORROW in series_data:
+            attributes[ATTR_TOMORROW] = list(series_data.get(ATTR_TOMORROW, []))
+            for key in (ATTR_TOMORROW_MIN, ATTR_TOMORROW_MAX, ATTR_TOMORROW_AVG):
+                value = series_data.get(key)
+                if value is not None:
+                    attributes[key] = value
+
+        for key in (ATTR_UPDATED_AT, ATTR_SOURCE, ATTR_IN_DOMAIN, ATTR_OUT_DOMAIN):
+            value = base_data.get(key)
+            if value is not None:
+                attributes[key] = value
+
+        return attributes
