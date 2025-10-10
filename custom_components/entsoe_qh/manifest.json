@@ -1,7 +1,7 @@
 {
   "domain": "entsoe_qh",
   "name": "ENTSO-E Energy Prices Integration",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "documentation": "https://github.com/trandus/hass-entsoe-qh/blob/main/README.md",
   "issue_tracker": "https://github.com/trandus/hass-entsoe-qh/issues",
   "attribution": "Data provided by the ENTSO-E Transparency Platform.",

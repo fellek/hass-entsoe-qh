@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import calendar
+import logging
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
@@ -33,6 +34,9 @@ from .constants import (
     ENTSOE_API_URL,
     REQUEST_TIMEOUT,
 )
+
+
+_LOGGER = logging.getLogger(__name__)
 
 
 class EntsoeApiError(Exception):
@@ -87,10 +91,16 @@ class EntsoeApiClient:
 
     async def get_converted_prices(self, now: datetime | None = None) -> dict[str, Any]:
         start, end = self._period_range(now)
+        _LOGGER.info(
+            "Starting ENTSO-E data download for the period %s - %s.",
+            start,
+            end,
+        )
         xml_text = await self._fetch_prices_xml(start, end)
         prices = self._parse_prices(xml_text)
         if not prices:
             raise EntsoeApiError("No price data available from ENTSO-E")
+        _LOGGER.info("Received %s price points from ENTSO-E.", len(prices))
         return self._convert_prices(prices, now)
 
     async def _fetch_prices_xml(self, start: str, end: str) -> str:
@@ -121,6 +131,11 @@ class EntsoeApiClient:
             raise EntsoeApiError(
                 f"Failed to fetch ENTSO-E data: {status} - {text}"
             )
+
+        _LOGGER.info(
+            "Successfully fetched ENTSO-E data with response code %s.",
+            status,
+        )
 
         return text
 
