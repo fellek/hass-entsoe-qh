@@ -20,11 +20,16 @@ except ModuleNotFoundError:  # pragma: no cover - fallback for environments with
         """Fallback definition of an HTTP client error."""
 
 from .constants import (
+    ATTR_DURATION_MINUTES,
     ATTR_PRICES_TODAY,
     ATTR_PRICES_TOMORROW,
     ATTR_PRICE_FIELDS,
+    ATTR_PRICE_ID,
+    ATTR_PRICE_START,
     ATTR_RAW_PRICE,
+    ATTR_SERIES,
     ATTR_UPDATED_AT,
+    ATTR_VALUE,
     ENTSOE_API_URL,
     REQUEST_TIMEOUT,
 )
@@ -38,6 +43,22 @@ class EntsoeApiError(Exception):
 class PricePoint:
     timestamp: datetime
     price_eur_mwh: Decimal
+
+
+@dataclass
+class ConvertedPoint:
+    start: datetime
+    value: Decimal
+    raw_value: Decimal
+
+    def to_entry(self, resolution: str, duration_minutes: int) -> dict[str, Any]:
+        return {
+            ATTR_PRICE_ID: f"{resolution}-{int(self.start.timestamp())}",
+            ATTR_PRICE_START: self.start.isoformat(),
+            ATTR_DURATION_MINUTES: duration_minutes,
+            ATTR_VALUE: float(self.value),
+            ATTR_RAW_PRICE: float(self.raw_value),
+        }
 
 
 class EntsoeApiClient:
@@ -203,68 +224,134 @@ class EntsoeApiClient:
         if self.energy_unit == "kWh":
             energy_divisor = Decimal("1000")
 
-        converted_points: list[dict[str, Any]] = []
-        today_points: list[dict[str, Any]] = []
-        tomorrow_points: list[dict[str, Any]] = []
+        converted_points: list[ConvertedPoint] = []
 
         for point in prices:
             converted_value = (point.price_eur_mwh / energy_divisor) * conversion_rate
             converted_value *= vat_multiplier
             converted_value = converted_value.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
-            data = {
-                "timestamp": point.timestamp,
-                "value": float(converted_value),
-                ATTR_RAW_PRICE: float(point.price_eur_mwh),
-            }
-            converted_points.append(data)
-            if point.timestamp.date() == current_time.date():
-                today_points.append(data)
-            elif point.timestamp.date() == (current_time + timedelta(days=1)).date():
-                tomorrow_points.append(data)
+            converted_points.append(
+                ConvertedPoint(
+                    start=point.timestamp,
+                    value=converted_value,
+                    raw_value=point.price_eur_mwh,
+                )
+            )
 
-        price_map = {item["timestamp"]: item["value"] for item in converted_points}
+        today_points = [item for item in converted_points if item.start.date() == current_time.date()]
+        tomorrow_points = [
+            item
+            for item in converted_points
+            if item.start.date() == (current_time + timedelta(days=1)).date()
+        ]
+
+        price_map = {item.start: item.value for item in converted_points}
 
         current_slot = current_time.replace(minute=(current_time.minute // 15) * 15)
-        current_price = price_map.get(current_slot)
-        if current_price is None:
-            future_points = [item for item in converted_points if item["timestamp"] >= current_time]
+        current_price_value = price_map.get(current_slot)
+        if current_price_value is None:
+            future_points = [item for item in converted_points if item.start >= current_time]
             if future_points:
-                current_price = future_points[0]["value"]
+                current_price_value = future_points[0].value
 
         hour_start = current_time.replace(minute=0)
         hour_slots = [hour_start + timedelta(minutes=15 * idx) for idx in range(4)]
         hour_values = [price_map.get(slot) for slot in hour_slots if price_map.get(slot) is not None]
-        hour_price = sum(hour_values) / len(hour_values) if hour_values else current_price
+        hour_price_value = (
+            sum(hour_values, Decimal(0)) / Decimal(len(hour_values))
+            if hour_values
+            else current_price_value
+        )
 
         unit = f"{self.currency}/{self.energy_unit}"
+        quarter_hour_series = self._build_series(
+            today_points,
+            tomorrow_points,
+            current_price_value,
+            "PT15M",
+            15,
+        )
 
-        serialized_prices = self._serialize_prices(converted_points)
-        serialized_today = self._serialize_prices(today_points)
-        serialized_tomorrow = self._serialize_prices(tomorrow_points)
+        hour_entries = self._build_hour_entries(converted_points)
+        today_hours = [item for item in hour_entries if item.start.date() == current_time.date()]
+        tomorrow_hours = [
+            item
+            for item in hour_entries
+            if item.start.date() == (current_time + timedelta(days=1)).date()
+        ]
+        hour_series = self._build_series(
+            today_hours,
+            tomorrow_hours,
+            hour_price_value,
+            "PT60M",
+            60,
+        )
 
         return {
             "unit": unit,
-            "current_price": current_price,
-            "hour_price": hour_price,
-            "prices": serialized_prices,
-            ATTR_PRICES_TODAY: serialized_today,
-            ATTR_PRICES_TOMORROW: serialized_tomorrow,
-            ATTR_PRICE_FIELDS: ["timestamp", "value", ATTR_RAW_PRICE],
+            ATTR_SERIES: {
+                "quarter_hour": quarter_hour_series,
+                "hour": hour_series,
+            },
+            ATTR_PRICE_FIELDS: [
+                ATTR_PRICE_ID,
+                ATTR_PRICE_START,
+                ATTR_DURATION_MINUTES,
+                ATTR_VALUE,
+                ATTR_RAW_PRICE,
+            ],
             ATTR_UPDATED_AT: datetime.now(timezone.utc).isoformat(),
         }
 
-    def _serialize_prices(self, items: list[dict[str, Any]]) -> list[list[float | int]]:
-        serialized: list[list[float | int]] = []
+    def _build_series(
+        self,
+        today_items: list[ConvertedPoint],
+        tomorrow_items: list[ConvertedPoint],
+        current_value: Decimal | None,
+        resolution: str,
+        duration_minutes: int,
+    ) -> dict[str, Any]:
+        today_serialized = self._serialize_prices(today_items, resolution, duration_minutes)
+        tomorrow_serialized = self._serialize_prices(tomorrow_items, resolution, duration_minutes)
+        return {
+            "current": float(current_value) if current_value is not None else None,
+            ATTR_PRICES_TODAY: today_serialized,
+            ATTR_PRICES_TOMORROW: tomorrow_serialized,
+        }
+
+    def _serialize_prices(
+        self,
+        items: list[ConvertedPoint],
+        resolution: str,
+        duration_minutes: int,
+    ) -> list[dict[str, Any]]:
+        sorted_items = sorted(items, key=lambda item: item.start)
+        return [item.to_entry(resolution, duration_minutes) for item in sorted_items]
+
+    def _build_hour_entries(self, items: list[ConvertedPoint]) -> list[ConvertedPoint]:
+        grouped: dict[datetime, list[ConvertedPoint]] = {}
         for item in items:
-            timestamp: datetime = item["timestamp"]
-            serialized.append(
-                [
-                    int(timestamp.timestamp()),
-                    float(item["value"]),
-                    float(item[ATTR_RAW_PRICE]),
-                ]
+            hour_start = item.start.replace(minute=0, second=0, microsecond=0)
+            grouped.setdefault(hour_start, []).append(item)
+
+        results: list[ConvertedPoint] = []
+        for hour_start, hour_items in grouped.items():
+            if not hour_items:
+                continue
+            count = Decimal(len(hour_items))
+            value_sum = sum((point.value for point in hour_items), Decimal(0))
+            raw_sum = sum((point.raw_value for point in hour_items), Decimal(0))
+            results.append(
+                ConvertedPoint(
+                    start=hour_start,
+                    value=(value_sum / count).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP),
+                    raw_value=(raw_sum / count).quantize(
+                        Decimal("0.0001"), rounding=ROUND_HALF_UP
+                    ),
+                )
             )
-        return serialized
+
+        return sorted(results, key=lambda item: item.start)
 
     def _ensure_utc(self, value: datetime | None) -> datetime:
         if value is None:

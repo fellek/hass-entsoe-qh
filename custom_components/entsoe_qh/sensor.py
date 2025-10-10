@@ -14,6 +14,7 @@ from .const import (
     ATTR_PRICES_TODAY,
     ATTR_PRICES_TOMORROW,
     ATTR_PRICE_FIELDS,
+    ATTR_SERIES,
     ATTR_UPDATED_AT,
     DOMAIN,
 )
@@ -24,19 +25,19 @@ from .coordinator import EntsoeCoordinator
 class EntsoeSensorDescription:
     key: str
     translation_key: str
-    attribute_key: str
+    series_key: str
 
 
 SENSOR_DESCRIPTIONS = (
     EntsoeSensorDescription(
         key="quarter_hour",
         translation_key="quarter_hour_price",
-        attribute_key="current_price",
+        series_key="quarter_hour",
     ),
     EntsoeSensorDescription(
         key="hour",
         translation_key="hour_price",
-        attribute_key="hour_price",
+        series_key="hour",
     ),
 )
 
@@ -76,7 +77,8 @@ class EntsoePriceSensor(CoordinatorEntity[EntsoeCoordinator], SensorEntity):
         data = self.coordinator.data
         if data is None:
             return None
-        value = data.get(self.description.attribute_key)
+        series = (data.get(ATTR_SERIES) or {}).get(self.description.series_key, {})
+        value = series.get("current")
         return None if value is None else float(value)
 
     @property
@@ -89,12 +91,12 @@ class EntsoePriceSensor(CoordinatorEntity[EntsoeCoordinator], SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         data = self.coordinator.data or {}
+        series = (data.get(ATTR_SERIES) or {}).get(self.description.series_key, {})
         attributes: dict[str, Any] = {
             ATTR_UPDATED_AT: data.get(ATTR_UPDATED_AT),
             ATTR_PRICE_FIELDS: data.get(ATTR_PRICE_FIELDS, []),
-            "prices": data.get("prices", []),
-            ATTR_PRICES_TODAY: data.get(ATTR_PRICES_TODAY, []),
-            ATTR_PRICES_TOMORROW: data.get(ATTR_PRICES_TOMORROW, []),
+            ATTR_PRICES_TODAY: series.get(ATTR_PRICES_TODAY, []),
+            ATTR_PRICES_TOMORROW: series.get(ATTR_PRICES_TOMORROW, []),
         }
         return attributes
 

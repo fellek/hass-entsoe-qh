@@ -12,11 +12,16 @@ sys.path.insert(0, str(project_root / "custom_components" / "entsoe_qh"))
 
 from shared.api import EntsoeApiClient
 from shared.constants import (
+    ATTR_DURATION_MINUTES,
     ATTR_PRICES_TODAY,
     ATTR_PRICES_TOMORROW,
     ATTR_PRICE_FIELDS,
+    ATTR_PRICE_ID,
+    ATTR_PRICE_START,
     ATTR_RAW_PRICE,
+    ATTR_SERIES,
     ATTR_UPDATED_AT,
+    ATTR_VALUE,
     DEFAULT_CURRENCY,
     DEFAULT_DOMAIN,
     DEFAULT_ENERGY_UNIT,
@@ -43,36 +48,46 @@ def test_entsoe_api_client_real_api_returns_prices():
     assert data["unit"] == f"{DEFAULT_CURRENCY}/{DEFAULT_ENERGY_UNIT}"
     assert ATTR_UPDATED_AT in data
 
-    prices = data["prices"]
-    assert isinstance(prices, list)
-    assert len(prices) > 0
+    series = data[ATTR_SERIES]
+    assert isinstance(series, dict)
 
-    first_point = prices[0]
-    assert isinstance(first_point, list)
-    assert len(first_point) == 3
-    timestamp_value, converted_value, raw_value = first_point
-    assert isinstance(timestamp_value, int)
-    assert isinstance(converted_value, float)
-    assert isinstance(raw_value, float)
+    assert "quarter_hour" in series
+    quarter_series = series["quarter_hour"]
+    assert isinstance(quarter_series, dict)
 
-    today_prices = data[ATTR_PRICES_TODAY]
+    current_quarter = quarter_series.get("current")
+    assert current_quarter is None or isinstance(current_quarter, float)
+
+    today_prices = quarter_series[ATTR_PRICES_TODAY]
     assert isinstance(today_prices, list)
     assert len(today_prices) > 0
 
-    today_timestamps = {item[0] for item in today_prices}
-    price_timestamps = {item[0] for item in prices}
-    assert today_timestamps.issubset(price_timestamps)
-
-    assert ATTR_PRICES_TOMORROW in data
-    tomorrow_prices = data[ATTR_PRICES_TOMORROW]
+    tomorrow_prices = quarter_series[ATTR_PRICES_TOMORROW]
     assert isinstance(tomorrow_prices, list)
 
     fields = data[ATTR_PRICE_FIELDS]
     assert isinstance(fields, list)
-    assert fields == ["timestamp", "value", ATTR_RAW_PRICE]
+    assert fields == [
+        ATTR_PRICE_ID,
+        ATTR_PRICE_START,
+        ATTR_DURATION_MINUTES,
+        ATTR_VALUE,
+        ATTR_RAW_PRICE,
+    ]
 
-    current_price = data["current_price"]
-    assert current_price is None or isinstance(current_price, float)
+    first_point = today_prices[0]
+    assert isinstance(first_point, dict)
+    for field in fields:
+        assert field in first_point
 
-    hour_price = data["hour_price"]
-    assert hour_price is None or isinstance(hour_price, float)
+    assert isinstance(first_point[ATTR_VALUE], float)
+    assert isinstance(first_point[ATTR_RAW_PRICE], float)
+    assert isinstance(first_point[ATTR_PRICE_START], str)
+    assert isinstance(first_point[ATTR_DURATION_MINUTES], int)
+
+    assert "hour" in series
+    hour_series = series["hour"]
+    assert isinstance(hour_series, dict)
+    current_hour = hour_series.get("current")
+    assert current_hour is None or isinstance(current_hour, float)
+    assert isinstance(hour_series[ATTR_PRICES_TODAY], list)
