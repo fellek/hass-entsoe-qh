@@ -3,7 +3,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
@@ -18,6 +22,7 @@ from .const import (
     ATTR_UPDATED_AT,
     DOMAIN,
 )
+from .shared.attributes import compact_series_attributes
 from .coordinator import EntsoeCoordinator
 
 
@@ -70,6 +75,7 @@ async def async_setup_entry(
 
 class EntsoePriceSensor(CoordinatorEntity[EntsoeCoordinator], SensorEntity):
     _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
         self,
@@ -107,8 +113,12 @@ class EntsoePriceSensor(CoordinatorEntity[EntsoeCoordinator], SensorEntity):
         attributes: dict[str, Any] = {
             ATTR_UPDATED_AT: data.get(ATTR_UPDATED_AT),
             ATTR_PRICE_FIELDS: data.get(ATTR_PRICE_FIELDS, []),
-            ATTR_PRICES_TODAY: series.get(ATTR_PRICES_TODAY, []),
-            ATTR_PRICES_TOMORROW: series.get(ATTR_PRICES_TOMORROW, []),
+            ATTR_PRICES_TODAY: compact_series_attributes(
+                series.get(ATTR_PRICES_TODAY)
+            ),
+            ATTR_PRICES_TOMORROW: compact_series_attributes(
+                series.get(ATTR_PRICES_TOMORROW)
+            ),
         }
         return attributes
 

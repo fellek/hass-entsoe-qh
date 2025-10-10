@@ -4,7 +4,7 @@
 
 Home Assistant integration distributed through HACS that retrieves quarter-hour electricity prices from the ENTSO-E API.
 
-**Current version:** 0.4.5
+**Current version:** 0.4.6
 
 ## Features
 
@@ -14,7 +14,7 @@ Home Assistant integration distributed through HACS that retrieves quarter-hour 
 - Conversion of EUR/MWh prices to the selected currency (EUR or PLN) and energy unit (kWh or MWh).
 - Optional VAT markup and custom exchange rate configuration.
 - Sensors appear only for the resolutions supplied by ENTSO-E, so you see 15-minute, hourly, or both prices depending on your area.
-- Sensor attributes provide compact price lists for today and tomorrow as `[timestamp, value, price_eur_mwh]`, ready for storage and charting.
+- Sensor attributes provide compact snapshots of today's and tomorrow's prices (including the total available points) so Home Assistant stays free of oversized attribute warnings.
 
 ## Installation
 

@@ -1,0 +1,75 @@
+from __future__ import annotations
+
+from datetime import datetime, timedelta, timezone
+
+import pytest
+
+from custom_components.entsoe_qh.shared.attributes import (
+    MAX_SERIES_POINTS,
+    compact_series_attributes,
+)
+from custom_components.entsoe_qh.shared.constants import (
+    ATTR_DURATION_MINUTES,
+    ATTR_PRICE_ID,
+    ATTR_PRICE_START,
+    ATTR_RAW_PRICE,
+    ATTR_SERIES_TOTAL_POINTS,
+    ATTR_SERIES_TRUNCATED,
+    ATTR_VALUE,
+)
+from tests.assertions import assert_that
+
+
+def _iso(dt: datetime) -> str:
+    return dt.astimezone(timezone.utc).isoformat()
+
+
+def test_compact_series_attributes_limits_payload_size():
+    # Arrange
+    base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
+    values = [float(index) for index in range(MAX_SERIES_POINTS + 5)]
+    series = {
+        ATTR_DURATION_MINUTES: 15,
+        ATTR_PRICE_ID: [f"pt15m-{index}" for index in range(len(values))],
+        ATTR_PRICE_START: [
+            _iso(base_time + timedelta(minutes=15 * index))
+            for index in range(len(values))
+        ],
+        ATTR_VALUE: values,
+        ATTR_RAW_PRICE: [value * 10 for value in values],
+    }
+
+    # Act
+    compacted = compact_series_attributes(series)
+
+    # Assert
+    assert_that(compacted[ATTR_SERIES_TOTAL_POINTS]).is_equal_to(len(values))
+    assert_that(compacted[ATTR_PRICE_ID]).has_length(MAX_SERIES_POINTS)
+    assert_that(compacted[ATTR_VALUE]).has_length(MAX_SERIES_POINTS)
+    assert_that(compacted[ATTR_RAW_PRICE]).has_length(MAX_SERIES_POINTS)
+    assert_that(compacted[ATTR_PRICE_START]).has_length(MAX_SERIES_POINTS)
+    assert_that(compacted[ATTR_SERIES_TRUNCATED]).is_true()
+    assert_that(all(item.endswith("Z") for item in compacted[ATTR_PRICE_START])).is_true()
+
+
+def test_compact_series_attributes_handles_empty_values():
+    # Arrange
+    series = {ATTR_DURATION_MINUTES: 60}
+
+    # Act
+    compacted = compact_series_attributes(series)
+
+    # Assert
+    assert_that(compacted[ATTR_DURATION_MINUTES]).is_equal_to(60)
+    assert_that(compacted[ATTR_SERIES_TOTAL_POINTS]).is_equal_to(0)
+
+
+def test_sensor_uses_measurement_state_class():
+    # Arrange
+    sensor_module = pytest.importorskip("homeassistant.components.sensor")
+    entsoe_sensor_module = pytest.importorskip("custom_components.entsoe_qh.sensor")
+    # Act
+    # Assert
+    assert_that(entsoe_sensor_module.EntsoePriceSensor._attr_state_class).is_equal_to(
+        sensor_module.SensorStateClass.MEASUREMENT
+    )

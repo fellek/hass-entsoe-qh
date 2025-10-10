@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.6 - 2025-10-13
+
+- Restored long-term statistics for the monetary sensors while keeping their history reliable.
+- Trimmed the exposed price samples so Home Assistant no longer warns about oversized attributes.
+
 ## 0.4.5 - 2025-10-12
 
 - Sensors now show up only when ENTSO-E actually provides that resolution, so you no longer see empty hourly or quarter-hour entities.

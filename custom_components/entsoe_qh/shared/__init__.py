@@ -3,4 +3,5 @@
 __all__ = [
     "api",
     "constants",
+    "attributes",
 ]
