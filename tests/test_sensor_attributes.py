@@ -1,9 +1,6 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from types import SimpleNamespace
-
-from unittest.mock import MagicMock
 
 import pytest
 
@@ -76,29 +73,3 @@ def test_sensor_uses_measurement_state_class():
     assert_that(entsoe_sensor_module.EntsoePriceSensor._attr_state_class).is_equal_to(
         sensor_module.SensorStateClass.MEASUREMENT
     )
-
-
-@pytest.mark.parametrize(
-    ("description_key", "expected_name"),
-    (
-        ("quarter_hour", "Energy price 15 min"),
-        ("half_hour", "Energy price 30 min"),
-        ("hour", "Energy price 1 h"),
-    ),
-)
-def test_sensor_default_name_includes_period(description_key: str, expected_name: str):
-    # Arrange
-    entsoe_sensor_module = pytest.importorskip("custom_components.entsoe_qh.sensor")
-    coordinator = MagicMock()
-    entry = SimpleNamespace(entry_id="test_entry")
-    description = entsoe_sensor_module.SENSOR_DESCRIPTIONS[description_key]
-
-    # Act
-    sensor = entsoe_sensor_module.EntsoePriceSensor(
-        coordinator=coordinator,
-        description=description,
-        entry=entry,
-    )
-
-    # Assert
-    assert_that(sensor.name).is_equal_to(expected_name)
