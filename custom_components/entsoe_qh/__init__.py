@@ -50,8 +50,21 @@ def _sanitize_entry_data(data: dict[str, Any]) -> dict[str, Any]:
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     new_data = _sanitize_entry_data(dict(config_entry.data))
-    if new_data != config_entry.data or config_entry.version != 2:
-        hass.config_entries.async_update_entry(config_entry, data=new_data, version=2)
+    new_unique_id = new_data.get(CONF_DOMAIN, DEFAULT_DOMAIN)
+
+    update_kwargs: dict[str, Any] = {}
+
+    if new_data != config_entry.data:
+        update_kwargs["data"] = new_data
+
+    if config_entry.version != 2:
+        update_kwargs["version"] = 2
+
+    if config_entry.unique_id != new_unique_id:
+        update_kwargs["unique_id"] = new_unique_id
+
+    if update_kwargs:
+        hass.config_entries.async_update_entry(config_entry, **update_kwargs)
     return True
 
 

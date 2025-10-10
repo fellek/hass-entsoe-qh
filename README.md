@@ -4,7 +4,7 @@
 
 Home Assistant integration distributed through HACS that retrieves quarter-hour electricity prices from the ENTSO-E API.
 
-**Current version:** 0.4.5
+**Current version:** 0.4.6
 
 ## Features
 

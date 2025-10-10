@@ -82,8 +82,7 @@ class EntsoeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if not errors:
                 normalized = _sanitize_entry_data(user_input)
                 domain = normalized[CONF_DOMAIN]
-                unique_id = f"{domain}_{domain}"
-                await self.async_set_unique_id(unique_id)
+                await self.async_set_unique_id(domain)
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(title="ENTSO-E", data=normalized)
 

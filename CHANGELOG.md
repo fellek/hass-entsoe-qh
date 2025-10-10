@@ -1,5 +1,9 @@
 # Changelog
 
+## [0.4.6] - 2025-10-11
+### Fixed
+- Removed the duplicate setup warning so the integration can be added without the `already_configured` message.
+
 ## [0.4.5] - 2025-10-11
 ### Fixed
 - Allow timezone-sensitive tests to fall back to a fixed offset when the system tzdata package is unavailable, ensuring Windows compatibility.
