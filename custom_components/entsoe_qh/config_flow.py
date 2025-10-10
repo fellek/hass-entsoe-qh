@@ -23,6 +23,7 @@ from .const import (
     SUPPORTED_CURRENCIES,
     SUPPORTED_ENERGY_UNITS,
 )
+from .shared.config import generate_unique_id
 
 
 DOMAIN_SELECTOR = selector.SelectSelector(
@@ -82,7 +83,7 @@ class EntsoeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if not errors:
                 normalized = _sanitize_entry_data(user_input)
                 domain = normalized[CONF_DOMAIN]
-                unique_id = f"{domain}_{domain}"
+                unique_id = generate_unique_id(domain)
                 await self.async_set_unique_id(unique_id)
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(title="ENTSO-E", data=normalized)
@@ -183,6 +184,15 @@ class EntsoeOptionsFlow(config_entries.OptionsFlow):
 
     async def async_create_entry(self, title: str, data: dict[str, Any]):
         new_data = _sanitize_entry_data({**self.config_entry.data, **data})
-        self.hass.config_entries.async_update_entry(self.config_entry, data=new_data)
+        new_unique_id = generate_unique_id(new_data[CONF_DOMAIN])
+
+        update_arguments: dict[str, Any] = {"data": new_data}
+        if self.config_entry.unique_id != new_unique_id:
+            update_arguments["unique_id"] = new_unique_id
+
+        self.hass.config_entries.async_update_entry(
+            self.config_entry,
+            **update_arguments,
+        )
         await self.hass.config_entries.async_reload(self.config_entry.entry_id)
         return super().async_create_entry(title=title, data={})

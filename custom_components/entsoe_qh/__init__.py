@@ -22,6 +22,7 @@ from .const import (
     PLATFORMS,
 )
 from .coordinator import EntsoeCoordinator
+from .shared.config import generate_unique_id
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -50,18 +51,34 @@ def _sanitize_entry_data(data: dict[str, Any]) -> dict[str, Any]:
 
 async def async_migrate_entry(hass: HomeAssistant, config_entry: ConfigEntry) -> bool:
     new_data = _sanitize_entry_data(dict(config_entry.data))
+    new_unique_id = generate_unique_id(new_data[CONF_DOMAIN])
+
+    update_arguments: dict[str, Any] = {}
     if new_data != config_entry.data or config_entry.version != 2:
-        hass.config_entries.async_update_entry(config_entry, data=new_data, version=2)
+        update_arguments["data"] = new_data
+        update_arguments["version"] = 2
+    if config_entry.unique_id != new_unique_id:
+        update_arguments["unique_id"] = new_unique_id
+    if update_arguments:
+        hass.config_entries.async_update_entry(config_entry, **update_arguments)
     return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     session = async_get_clientsession(hass)
     entry_data = _sanitize_entry_data(dict(entry.data))
-    if entry_data != entry.data:
-        hass.config_entries.async_update_entry(entry, data=entry_data, version=2)
-    else:
-        entry_data = {**entry_data}
+    expected_unique_id = generate_unique_id(entry_data[CONF_DOMAIN])
+
+    update_arguments: dict[str, Any] = {}
+    if entry_data != entry.data or entry.version != 2:
+        update_arguments["data"] = entry_data
+        update_arguments["version"] = 2
+    if entry.unique_id != expected_unique_id:
+        update_arguments["unique_id"] = expected_unique_id
+    if update_arguments:
+        hass.config_entries.async_update_entry(entry, **update_arguments)
+
+    entry_data = {**entry_data}
 
     domain = entry_data[CONF_DOMAIN]
 
