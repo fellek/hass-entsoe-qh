@@ -26,7 +26,7 @@ from shared.constants import (
 def test_entsoe_api_client_real_api_returns_prices():
     security_token = os.getenv("ENTSOE_API_KEY")
     if security_token is None or security_token.strip() == "":
-        pytest.skip("Brak ustawionego klucza ENTSOE_API_KEY")
+        pytest.skip("Missing ENTSOE_API_KEY environment variable")
 
     client = EntsoeApiClient(
         session=None,

@@ -11,13 +11,13 @@ from urllib.request import Request, urlopen
 import xml.etree.ElementTree as ET
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-try:  # pragma: no cover - opcjonalne importowanie dla środowiska Home Assistant
+try:  # pragma: no cover - optional import for the Home Assistant runtime
     from aiohttp import ClientError, ClientSession
-except ModuleNotFoundError:  # pragma: no cover - fallback dla środowisk bez aiohttp
+except ModuleNotFoundError:  # pragma: no cover - fallback for environments without aiohttp
     ClientSession = None  # type: ignore
 
     class ClientError(Exception):
-        """Awaryjna definicja błędu klienta HTTP."""
+        """Fallback definition of an HTTP client error."""
 
 from .constants import (
     ATTR_PRICES_TODAY,
@@ -31,7 +31,7 @@ from .constants import (
 
 
 class EntsoeApiError(Exception):
-    """Wyjątek sygnalizujący błąd podczas komunikacji z ENTSO-E."""
+    """Exception raised when communication with ENTSO-E fails."""
 
 
 @dataclass
@@ -69,7 +69,7 @@ class EntsoeApiClient:
         xml_text = await self._fetch_prices_xml(start, end)
         prices = self._parse_prices(xml_text)
         if not prices:
-            raise EntsoeApiError("Brak danych cenowych z ENTSO-E")
+            raise EntsoeApiError("No price data available from ENTSO-E")
         return self._convert_prices(prices, now)
 
     async def _fetch_prices_xml(self, start: str, end: str) -> str:
@@ -92,13 +92,13 @@ class EntsoeApiClient:
                     text = await response.text()
                     status = response.status
             except ClientError as err:
-                raise EntsoeApiError(f"Błąd komunikacji z ENTSO-E: {err}") from err
+                raise EntsoeApiError(f"Error communicating with ENTSO-E: {err}") from err
         else:
             text, status = await self._fetch_with_stdlib(params)
 
         if status != 200:
             raise EntsoeApiError(
-                f"Błąd pobierania danych ENTSO-E: {status} - {text}"
+                f"Failed to fetch ENTSO-E data: {status} - {text}"
             )
 
         return text
@@ -126,7 +126,7 @@ class EntsoeApiClient:
         try:
             root = ET.fromstring(xml_text)
         except ET.ParseError as err:
-            raise EntsoeApiError(f"Nieprawidłowa odpowiedź XML: {err}") from err
+            raise EntsoeApiError(f"Invalid XML response: {err}") from err
 
         namespace_uri = self._detect_namespace(root.tag)
         namespace = {"ns": namespace_uri} if namespace_uri is not None else {}

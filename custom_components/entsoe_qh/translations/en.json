@@ -29,5 +29,22 @@
     "error": {
       "required": "This field is required."
     }
+  },
+  "entity": {
+    "sensor": {
+      "entsoe_qh": {
+        "quarter_hour_price": {
+          "name": "15-minute energy price"
+        },
+        "hour_price": {
+          "name": "Hourly energy price"
+        }
+      }
+    }
+  },
+  "device": {
+    "entsoe_qh": {
+      "name": "ENTSO-E Energy Prices"
+    }
   }
 }

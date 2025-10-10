@@ -23,19 +23,19 @@ from .coordinator import EntsoeCoordinator
 @dataclass
 class EntsoeSensorDescription:
     key: str
-    name: str
+    translation_key: str
     attribute_key: str
 
 
 SENSOR_DESCRIPTIONS = (
     EntsoeSensorDescription(
         key="quarter_hour",
-        name="Cena energii 15 min",
+        translation_key="quarter_hour_price",
         attribute_key="current_price",
     ),
     EntsoeSensorDescription(
         key="hour",
-        name="Cena energii 1h",
+        translation_key="hour_price",
         attribute_key="hour_price",
     ),
 )
@@ -69,7 +69,7 @@ class EntsoePriceSensor(CoordinatorEntity[EntsoeCoordinator], SensorEntity):
         self._entry = entry
         self._attr_has_entity_name = True
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
-        self._attr_name = description.name
+        self._attr_translation_key = description.translation_key
 
     @property
     def native_value(self) -> float | None:
@@ -102,7 +102,7 @@ class EntsoePriceSensor(CoordinatorEntity[EntsoeCoordinator], SensorEntity):
     def device_info(self) -> DeviceInfo:
         return DeviceInfo(
             identifiers={(DOMAIN, self._entry.entry_id)},
-            name="ENTSO-E Ceny energii",
+            name="ENTSO-E Energy Prices",
             manufacturer="ENTSO-E",
         )
 

@@ -4,7 +4,7 @@
 
 Home Assistant integration distributed through HACS that retrieves quarter-hour electricity prices from the ENTSO-E API.
 
-**Current version:** 0.3.0
+**Current version:** 0.3.1
 
 ## Features
 
@@ -13,8 +13,8 @@ Home Assistant integration distributed through HACS that retrieves quarter-hour 
 - Conversion of EUR/MWh prices to the selected currency (EUR or PLN) and energy unit (kWh or MWh).
 - Optional VAT markup and custom exchange rate configuration.
 - Two sensors available:
-  - `Cena energii 15 min` – current price for the ongoing 15-minute slot.
-  - `Cena energii 1h` – average price for the current hour (four quarter-hour points).
+  - `15-minute energy price` – current price for the ongoing 15-minute slot.
+  - `Hourly energy price` – average price for the current hour (four quarter-hour points).
 - Sensor attributes provide compact price lists for today and tomorrow as `[timestamp, value, price_eur_mwh]`, ready for storage and charting.
 
 ## Installation
@@ -22,13 +22,13 @@ Home Assistant integration distributed through HACS that retrieves quarter-hour 
 1. Add this repository to HACS as a custom repository.
 2. Install the `ENTSO-E Energy Prices` integration.
 3. In Home Assistant, go to `Settings → Devices & Services → Add Integration` and select `ENTSO-E Energy Prices`.
-4. Provide your ENTSO-E API token and configure the remaining parameters (area, currency, exchange rate, VAT).
+4. Provide your ENTSO-E API token (required) and configure the remaining parameters (area, currency, exchange rate, VAT).
 
 ## Configuration
 
 | Field | Description |
 | ----- | ----------- |
-| API token | Security token obtained from the ENTSO-E portal. |
+| API token | Required security token obtained from the ENTSO-E portal. |
 | Area (country and tariff) | Select the ENTSO-E bidding zone from the dropdown list. The default is `10YPL-AREA-----S` for Poland. |
 | Price currency | EUR or PLN. |
 | Energy unit | kWh or MWh. |

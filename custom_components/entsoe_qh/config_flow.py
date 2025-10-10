@@ -90,7 +90,7 @@ class EntsoeConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         security_token_default = submitted.get(CONF_SECURITY_TOKEN, "")
         data_schema = vol.Schema(
             {
-                vol.Optional(CONF_SECURITY_TOKEN, default=security_token_default): str,
+                vol.Required(CONF_SECURITY_TOKEN, default=security_token_default): str,
                 vol.Required(
                     CONF_DOMAIN,
                     default=submitted.get(CONF_DOMAIN, DEFAULT_DOMAIN),
