@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.7 - 2025-10-14
+
+- Energy price sensors now show names with their time period (for example, "Energy price 15 min") so you can instantly spot the right value in Home Assistant.
+
 ## 0.4.6 - 2025-10-13
 
 - Restored long-term statistics for the monetary sensors while keeping their history reliable.

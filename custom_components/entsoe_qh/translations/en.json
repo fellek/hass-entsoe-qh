@@ -34,13 +34,13 @@
     "sensor": {
         "entsoe_qh": {
           "quarter_hour_price": {
-            "name": "15-minute energy price"
+            "name": "Energy price 15 min"
           },
           "half_hour_price": {
-            "name": "30-minute energy price"
+            "name": "Energy price 30 min"
           },
           "hour_price": {
-            "name": "Hourly energy price"
+            "name": "Energy price 1 h"
           }
         }
       }
