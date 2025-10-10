@@ -154,6 +154,7 @@ from entsoe_qh.sensor import (  # type: ignore  # noqa: E402
 )
 from entsoe_qh.shared.api import EntsoeApiClient, PricePoint  # type: ignore  # noqa: E402
 from entsoe_qh.shared.constants import (  # type: ignore  # noqa: E402
+    ATTR_CURRENT,
     ATTR_SERIES,
     ATTR_START,
     ATTR_TODAY,
@@ -268,6 +269,33 @@ def test_sensor_uses_last_known_price_when_future_slot_missing(
     expected_value = float(points[-1].price_eur_mwh / Decimal("1000"))
     assert sensor.native_value == pytest.approx(expected_value, rel=1e-6)
     assert sensor._attr_suggested_object_id == "entso_e_energy_prices_m15"
+
+
+def test_sensor_uses_fallback_when_current_missing(
+    api_client: EntsoeApiClient,
+) -> None:
+    coordinator = DummyCoordinator()
+    entry = SimpleNamespace(entry_id="test-entry")
+    sensor = EntsoePriceSensor(
+        coordinator=coordinator,
+        description=SENSOR_DESCRIPTIONS[0],
+        entry=entry,
+    )
+    sensor.hass = SimpleNamespace()
+    sensor.async_write_ha_state = lambda: None
+
+    now = datetime(2025, 1, 5, 12, tzinfo=timezone.utc)
+    points = _build_price_points(now.replace(hour=0), 96, 15)
+    data = api_client._convert_prices(points, now)
+    series = data[ATTR_SERIES]["quarter_hour"]
+    series[ATTR_CURRENT] = None
+    coordinator.data = data
+
+    sensor._handle_coordinator_update()
+
+    assert sensor.native_value is not None
+    expected_value = series[ATTR_TODAY][-1]
+    assert sensor.native_value == pytest.approx(expected_value, rel=1e-6)
 
 
 def test_series_uses_entsoe_timezone_for_day_boundaries(

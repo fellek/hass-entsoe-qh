@@ -149,6 +149,8 @@ class EntsoePriceSensor(CoordinatorEntity[EntsoeCoordinator], SensorEntity):
             return None, {}, data.get(ATTR_UNIT)
 
         state_value = series.get(ATTR_CURRENT)
+        if state_value is None:
+            state_value = self._fallback_state_value(series)
         state = float(state_value) if state_value is not None else None
         attributes = self._create_attributes(data, series)
         unit = data.get(ATTR_UNIT)
@@ -191,3 +193,17 @@ class EntsoePriceSensor(CoordinatorEntity[EntsoeCoordinator], SensorEntity):
                 attributes[key] = value
 
         return attributes
+
+    @staticmethod
+    def _fallback_state_value(series_data: dict[str, Any]) -> float | None:
+        today_values = series_data.get(ATTR_TODAY) or []
+        for value in reversed(today_values):
+            if value is not None:
+                return float(value)
+
+        tomorrow_values = series_data.get(ATTR_TOMORROW) or []
+        for value in tomorrow_values:
+            if value is not None:
+                return float(value)
+
+        return None
