@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.11 - 2025-10-18
+
+- Price sensors now show their exact interval (15 min, 30 min, 1 h) in both the name and entity ID, making it easy to pick the right one for automations and dashboards.
+
 ## 0.4.10 - 2025-10-17
 
 - Fixes the options screen so you can update your ENTSO-E token and area without restarting the integration.

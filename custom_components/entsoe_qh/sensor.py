@@ -31,10 +31,15 @@ class EntsoeSensorDescription:
     translation_key: str
     series_key: str
     period_label: str
+    object_id_suffix: str
 
     @property
     def translation_placeholders(self) -> dict[str, str]:
         return {"period": self.period_label}
+
+    @property
+    def entity_name(self) -> str:
+        return f"ENTSO-E Energy Prices {self.period_label}"
 
 
 SENSOR_DESCRIPTIONS: dict[str, EntsoeSensorDescription] = {
@@ -43,18 +48,21 @@ SENSOR_DESCRIPTIONS: dict[str, EntsoeSensorDescription] = {
         translation_key="quarter_hour_price",
         series_key="quarter_hour",
         period_label="15 min",
+        object_id_suffix="15min",
     ),
     "half_hour": EntsoeSensorDescription(
         key="half_hour",
         translation_key="half_hour_price",
         series_key="half_hour",
         period_label="30 min",
+        object_id_suffix="30min",
     ),
     "hour": EntsoeSensorDescription(
         key="hour",
         translation_key="hour_price",
         series_key="hour",
-        period_label="1h",
+        period_label="1 h",
+        object_id_suffix="1h",
     ),
 }
 
@@ -93,11 +101,11 @@ class EntsoePriceSensor(CoordinatorEntity[EntsoeCoordinator], SensorEntity):
         super().__init__(coordinator)
         self.description = description
         self._entry = entry
-        self._attr_has_entity_name = True
+        self._attr_has_entity_name = False
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
-        self._attr_translation_key = description.translation_key
-        self._attr_translation_placeholders = (
-            description.translation_placeholders
+        self._attr_name = description.entity_name
+        self._attr_suggested_object_id = (
+            f"entso_e_energy_prices_{description.object_id_suffix}"
         )
 
     @property

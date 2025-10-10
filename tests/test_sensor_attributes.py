@@ -86,20 +86,24 @@ def test_sensor_uses_generic_device_class_for_prices():
     )
 
 
-def test_sensor_descriptions_expose_resolution_placeholders():
+def test_sensor_descriptions_define_display_and_object_id_parts():
     # Arrange
     entsoe_sensor_module = pytest.importorskip("custom_components.entsoe_qh.sensor")
     expected_labels = {
-        "quarter_hour": "15 min",
-        "half_hour": "30 min",
-        "hour": "1h",
+        "quarter_hour": ("15 min", "15min"),
+        "half_hour": ("30 min", "30min"),
+        "hour": ("1 h", "1h"),
     }
 
     # Act
     descriptions = entsoe_sensor_module.SENSOR_DESCRIPTIONS
 
     # Assert
-    for key, label in expected_labels.items():
+    for key, (label, suffix) in expected_labels.items():
         description = descriptions[key]
         assert_that(description.period_label).is_equal_to(label)
         assert_that(description.translation_placeholders["period"]).is_equal_to(label)
+        assert_that(description.object_id_suffix).is_equal_to(suffix)
+        assert_that(description.entity_name).is_equal_to(
+            f"ENTSO-E Energy Prices {label}"
+        )
