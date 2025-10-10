@@ -44,12 +44,6 @@ class EntsoeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
 
     async def _async_update_data(self) -> dict[str, Any]:
         try:
-            _LOGGER.info(
-                "Fetching ENTSO-E prices for %s (%s/%s)",
-                self.api_client.domain,
-                self.api_client.currency,
-                self.api_client.energy_unit,
-            )
             return await self.api_client.get_converted_prices()
         except EntsoeApiError as err:
             raise UpdateFailed(str(err)) from err

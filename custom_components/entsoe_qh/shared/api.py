@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import calendar
 from dataclasses import dataclass
-from datetime import date, datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 from typing import Any
 from urllib.parse import urlencode
@@ -20,24 +20,16 @@ except ModuleNotFoundError:  # pragma: no cover - fallback for environments with
         """Fallback definition of an HTTP client error."""
 
 from .constants import (
-    ATTR_CURRENT,
-    ATTR_CURRENCY,
-    ATTR_IN_DOMAIN,
-    ATTR_OUT_DOMAIN,
+    ATTR_DURATION_MINUTES,
+    ATTR_PRICES_TODAY,
+    ATTR_PRICES_TOMORROW,
+    ATTR_PRICE_FIELDS,
+    ATTR_PRICE_ID,
+    ATTR_PRICE_START,
+    ATTR_RAW_PRICE,
     ATTR_SERIES,
-    ATTR_SOURCE,
-    ATTR_START,
-    ATTR_STEP_MINUTES,
-    ATTR_TODAY,
-    ATTR_TODAY_AVG,
-    ATTR_TODAY_MAX,
-    ATTR_TODAY_MIN,
-    ATTR_TOMORROW,
-    ATTR_TOMORROW_AVG,
-    ATTR_TOMORROW_MAX,
-    ATTR_TOMORROW_MIN,
-    ATTR_UNIT,
     ATTR_UPDATED_AT,
+    ATTR_VALUE,
     ENTSOE_API_URL,
     REQUEST_TIMEOUT,
 )
@@ -51,14 +43,22 @@ class EntsoeApiError(Exception):
 class PricePoint:
     timestamp: datetime
     price_eur_mwh: Decimal
-    resolution_minutes: int
 
 
 @dataclass
 class ConvertedPoint:
     start: datetime
     value: Decimal
-    resolution_minutes: int
+    raw_value: Decimal
+
+    def to_entry(self, resolution: str, duration_minutes: int) -> dict[str, Any]:
+        return {
+            ATTR_PRICE_ID: f"{resolution}-{int(self.start.timestamp())}",
+            ATTR_PRICE_START: self.start.isoformat(),
+            ATTR_DURATION_MINUTES: duration_minutes,
+            ATTR_VALUE: float(self.value),
+            ATTR_RAW_PRICE: float(self.raw_value),
+        }
 
 
 class EntsoeApiClient:
@@ -185,13 +185,7 @@ class EntsoeApiClient:
                     timestamp = start_time + timedelta(
                         minutes=resolution_minutes * (position - 1)
                     )
-                    points.append(
-                        PricePoint(
-                            timestamp=timestamp,
-                            price_eur_mwh=price,
-                            resolution_minutes=resolution_minutes,
-                        )
-                    )
+                    points.append(PricePoint(timestamp=timestamp, price_eur_mwh=price))
 
         points.sort(key=lambda item: item.timestamp)
         return points
@@ -224,10 +218,11 @@ class EntsoeApiClient:
         now: datetime | None,
     ) -> dict[str, Any]:
         current_time = self._ensure_utc(now).replace(second=0, microsecond=0)
-        current_local = self._to_entsoe_timezone(current_time)
         conversion_rate = Decimal(str(self.currency_rate))
         vat_multiplier = Decimal("1") + (Decimal(str(self.vat)) / Decimal("100"))
-        energy_divisor = Decimal("1000") if self.energy_unit == "kWh" else Decimal("1")
+        energy_divisor = Decimal("1")
+        if self.energy_unit == "kWh":
+            energy_divisor = Decimal("1000")
 
         converted_points: list[ConvertedPoint] = []
 
@@ -239,81 +234,99 @@ class EntsoeApiClient:
                 ConvertedPoint(
                     start=point.timestamp,
                     value=converted_value,
-                    resolution_minutes=point.resolution_minutes,
+                    raw_value=point.price_eur_mwh,
                 )
             )
 
-        if not converted_points:
-            raise EntsoeApiError("No converted price points available")
+        today_points = [item for item in converted_points if item.start.date() == current_time.date()]
+        tomorrow_points = [
+            item
+            for item in converted_points
+            if item.start.date() == (current_time + timedelta(days=1)).date()
+        ]
 
-        base_resolution = min(item.resolution_minutes for item in converted_points)
-        quarter_points = [item for item in converted_points if item.resolution_minutes == base_resolution]
-        if not quarter_points:
-            quarter_points = converted_points
+        price_map = {item.start: item.value for item in converted_points}
 
-        hour_points = self._build_hour_entries(converted_points)
+        current_slot = current_time.replace(minute=(current_time.minute // 15) * 15)
+        current_price_value = price_map.get(current_slot)
+        if current_price_value is None:
+            future_points = [item for item in converted_points if item.start >= current_time]
+            if future_points:
+                current_price_value = future_points[0].value
 
-        quarter_series = self._build_series_payload(
-            quarter_points,
-            base_resolution,
-            current_time,
-            current_local,
-        )
-
-        hour_series = self._build_series_payload(
-            hour_points,
-            60,
-            current_time,
-            current_local,
+        hour_start = current_time.replace(minute=0)
+        hour_slots = [hour_start + timedelta(minutes=15 * idx) for idx in range(4)]
+        hour_values = [price_map.get(slot) for slot in hour_slots if price_map.get(slot) is not None]
+        hour_price_value = (
+            sum(hour_values, Decimal(0)) / Decimal(len(hour_values))
+            if hour_values
+            else current_price_value
         )
 
         unit = f"{self.currency}/{self.energy_unit}"
-        timestamp_now = datetime.now(timezone.utc).isoformat()
+        quarter_hour_series = self._build_series(
+            today_points,
+            tomorrow_points,
+            current_price_value,
+            "PT15M",
+            15,
+        )
+
+        hour_entries = self._build_hour_entries(converted_points)
+        today_hours = [item for item in hour_entries if item.start.date() == current_time.date()]
+        tomorrow_hours = [
+            item
+            for item in hour_entries
+            if item.start.date() == (current_time + timedelta(days=1)).date()
+        ]
+        hour_series = self._build_series(
+            today_hours,
+            tomorrow_hours,
+            hour_price_value,
+            "PT60M",
+            60,
+        )
 
         return {
-            ATTR_UNIT: unit,
-            ATTR_CURRENCY: self.currency,
-            ATTR_UPDATED_AT: timestamp_now,
-            ATTR_SOURCE: "ENTSO-E",
-            ATTR_IN_DOMAIN: self.domain,
-            ATTR_OUT_DOMAIN: self.domain,
+            "unit": unit,
             ATTR_SERIES: {
-                "quarter_hour": quarter_series,
+                "quarter_hour": quarter_hour_series,
                 "hour": hour_series,
             },
+            ATTR_PRICE_FIELDS: [
+                ATTR_PRICE_ID,
+                ATTR_PRICE_START,
+                ATTR_DURATION_MINUTES,
+                ATTR_VALUE,
+                ATTR_RAW_PRICE,
+            ],
+            ATTR_UPDATED_AT: datetime.now(timezone.utc).isoformat(),
         }
 
-    def _build_series_payload(
+    def _build_series(
+        self,
+        today_items: list[ConvertedPoint],
+        tomorrow_items: list[ConvertedPoint],
+        current_value: Decimal | None,
+        resolution: str,
+        duration_minutes: int,
+    ) -> dict[str, Any]:
+        today_serialized = self._serialize_prices(today_items, resolution, duration_minutes)
+        tomorrow_serialized = self._serialize_prices(tomorrow_items, resolution, duration_minutes)
+        return {
+            "current": float(current_value) if current_value is not None else None,
+            ATTR_PRICES_TODAY: today_serialized,
+            ATTR_PRICES_TOMORROW: tomorrow_serialized,
+        }
+
+    def _serialize_prices(
         self,
         items: list[ConvertedPoint],
-        step_minutes: int,
-        current_time: datetime,
-        current_local: datetime,
-    ) -> dict[str, Any]:
+        resolution: str,
+        duration_minutes: int,
+    ) -> list[dict[str, Any]]:
         sorted_items = sorted(items, key=lambda item: item.start)
-        today_date = current_local.date()
-        tomorrow_date = (current_local + timedelta(days=1)).date()
-        slots_per_day = self._slots_per_day(step_minutes)
-
-        today_values = self._values_for_date(sorted_items, today_date, slots_per_day)
-        tomorrow_values = self._values_for_date(sorted_items, tomorrow_date, slots_per_day)
-
-        start_reference = self._series_start(sorted_items, current_local)
-
-        payload: dict[str, Any] = {
-            ATTR_CURRENT: self._select_current_value(sorted_items, current_time, step_minutes),
-            ATTR_START: start_reference,
-            ATTR_STEP_MINUTES: step_minutes,
-            ATTR_TODAY: today_values,
-        }
-
-        payload.update(self._stats_for_today(today_values))
-
-        if tomorrow_values:
-            payload[ATTR_TOMORROW] = tomorrow_values
-            payload.update(self._stats_for_tomorrow(tomorrow_values))
-
-        return payload
+        return [item.to_entry(resolution, duration_minutes) for item in sorted_items]
 
     def _build_hour_entries(self, items: list[ConvertedPoint]) -> list[ConvertedPoint]:
         grouped: dict[datetime, list[ConvertedPoint]] = {}
@@ -327,93 +340,18 @@ class EntsoeApiClient:
                 continue
             count = Decimal(len(hour_items))
             value_sum = sum((point.value for point in hour_items), Decimal(0))
+            raw_sum = sum((point.raw_value for point in hour_items), Decimal(0))
             results.append(
                 ConvertedPoint(
                     start=hour_start,
                     value=(value_sum / count).quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP),
-                    resolution_minutes=60,
+                    raw_value=(raw_sum / count).quantize(
+                        Decimal("0.0001"), rounding=ROUND_HALF_UP
+                    ),
                 )
             )
 
         return sorted(results, key=lambda item: item.start)
-
-    @staticmethod
-    def _slots_per_day(step_minutes: int) -> int:
-        if step_minutes <= 0:
-            return 1
-        return max(1, (24 * 60) // step_minutes)
-
-    def _values_for_date(
-        self,
-        items: list[ConvertedPoint],
-        target_date: date,
-        limit: int,
-    ) -> list[float]:
-        filtered: list[float] = []
-        for item in items:
-            localized = self._to_entsoe_timezone(item.start)
-            if localized.date() == target_date:
-                filtered.append(self._round_float(item.value))
-        return filtered[:limit]
-
-    def _series_start(
-        self,
-        items: list[ConvertedPoint],
-        current_local: datetime,
-    ) -> str:
-        if items:
-            reference = self._to_entsoe_timezone(items[0].start)
-        else:
-            reference = current_local
-        start_of_day = reference.replace(hour=0, minute=0, second=0, microsecond=0)
-        return start_of_day.isoformat()
-
-    def _select_current_value(
-        self,
-        items: list[ConvertedPoint],
-        current_time: datetime,
-        step_minutes: int,
-    ) -> float | None:
-        if not items:
-            return None
-        step = max(step_minutes, 1)
-        minute = (current_time.minute // step) * step
-        slot = current_time.replace(minute=minute, second=0, microsecond=0)
-        value_map = {item.start: item.value for item in items}
-        selected = value_map.get(slot)
-        if selected is None:
-            past_items = [item for item in items if item.start <= slot]
-            if past_items:
-                selected = past_items[-1].value
-            else:
-                future_items = [item for item in items if item.start >= slot]
-                if not future_items:
-                    return None
-                selected = future_items[0].value
-        return self._round_float(selected)
-
-    def _stats_for_today(self, values: list[float]) -> dict[str, float]:
-        if not values:
-            return {}
-        return {
-            ATTR_TODAY_MIN: self._round_float(min(values)),
-            ATTR_TODAY_MAX: self._round_float(max(values)),
-            ATTR_TODAY_AVG: self._round_float(sum(values) / len(values)),
-        }
-
-    def _stats_for_tomorrow(self, values: list[float]) -> dict[str, float]:
-        if not values:
-            return {}
-        return {
-            ATTR_TOMORROW_MIN: self._round_float(min(values)),
-            ATTR_TOMORROW_MAX: self._round_float(max(values)),
-            ATTR_TOMORROW_AVG: self._round_float(sum(values) / len(values)),
-        }
-
-    @staticmethod
-    def _round_float(value: Decimal | float) -> float:
-        decimal_value = Decimal(str(value))
-        return float(decimal_value.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP))
 
     def _ensure_utc(self, value: datetime | None) -> datetime:
         if value is None:

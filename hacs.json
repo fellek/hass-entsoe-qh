@@ -1,5 +1,7 @@
 {
   "name": "ENTSO-E Energy Prices",
   "content_in_root": false,
-  "render_readme": true
+  "domains": ["sensor"],
+  "iot_class": "Cloud Polling",
+  "homeassistant": "2024.4.0"
 }
