@@ -55,15 +55,6 @@ class ConvertedPoint:
     value: Decimal
     raw_value: Decimal
 
-    def to_entry(self, resolution: str, duration_minutes: int) -> dict[str, Any]:
-        return {
-            ATTR_PRICE_ID: f"{resolution}-{int(self.start.timestamp())}",
-            ATTR_PRICE_START: self.start.isoformat(),
-            ATTR_DURATION_MINUTES: duration_minutes,
-            ATTR_VALUE: float(self.value),
-            ATTR_RAW_PRICE: float(self.raw_value),
-        }
-
 
 class EntsoeApiClient:
     try:
@@ -107,6 +98,7 @@ class EntsoeApiClient:
         params = {
             "securityToken": self.security_token,
             "documentType": "A44",
+            "contract_MarketAgreement.type": "A01",
             "in_Domain": self.domain,
             "out_Domain": self.domain,
             "periodStart": start,
@@ -311,7 +303,6 @@ class EntsoeApiClient:
             ATTR_PRICE_FIELDS: [
                 ATTR_PRICE_ID,
                 ATTR_PRICE_START,
-                ATTR_DURATION_MINUTES,
                 ATTR_VALUE,
                 ATTR_RAW_PRICE,
             ],
@@ -339,9 +330,17 @@ class EntsoeApiClient:
         items: list[ConvertedPoint],
         resolution: str,
         duration_minutes: int,
-    ) -> list[dict[str, Any]]:
+    ) -> dict[str, Any]:
         sorted_items = sorted(items, key=lambda item: item.start)
-        return [item.to_entry(resolution, duration_minutes) for item in sorted_items]
+        return {
+            ATTR_DURATION_MINUTES: duration_minutes,
+            ATTR_PRICE_ID: [
+                f"{resolution}-{int(item.start.timestamp())}" for item in sorted_items
+            ],
+            ATTR_PRICE_START: [item.start.isoformat() for item in sorted_items],
+            ATTR_VALUE: [float(item.value) for item in sorted_items],
+            ATTR_RAW_PRICE: [float(item.raw_value) for item in sorted_items],
+        }
 
     def _build_hour_entries(self, items: list[ConvertedPoint]) -> list[ConvertedPoint]:
         grouped: dict[datetime, list[ConvertedPoint]] = {}

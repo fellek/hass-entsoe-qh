@@ -59,31 +59,34 @@ def test_entsoe_api_client_real_api_returns_prices():
     assert current_quarter is None or isinstance(current_quarter, float)
 
     today_prices = quarter_series[ATTR_PRICES_TODAY]
-    assert isinstance(today_prices, list)
-    assert len(today_prices) > 0
+    assert isinstance(today_prices, dict)
+    assert today_prices[ATTR_DURATION_MINUTES] == 15
 
     tomorrow_prices = quarter_series[ATTR_PRICES_TOMORROW]
-    assert isinstance(tomorrow_prices, list)
+    assert isinstance(tomorrow_prices, dict)
+    assert tomorrow_prices[ATTR_DURATION_MINUTES] == 15
 
     fields = data[ATTR_PRICE_FIELDS]
     assert isinstance(fields, list)
     assert fields == [
         ATTR_PRICE_ID,
         ATTR_PRICE_START,
-        ATTR_DURATION_MINUTES,
         ATTR_VALUE,
         ATTR_RAW_PRICE,
     ]
 
-    first_point = today_prices[0]
-    assert isinstance(first_point, dict)
     for field in fields:
-        assert field in first_point
+        assert field in today_prices
+        assert isinstance(today_prices[field], list)
+        assert len(today_prices[field]) > 0
+        assert field in tomorrow_prices
+        assert isinstance(tomorrow_prices[field], list)
 
-    assert isinstance(first_point[ATTR_VALUE], float)
-    assert isinstance(first_point[ATTR_RAW_PRICE], float)
-    assert isinstance(first_point[ATTR_PRICE_START], str)
-    assert isinstance(first_point[ATTR_DURATION_MINUTES], int)
+    assert len({len(today_prices[field]) for field in fields}) == 1
+
+    assert isinstance(today_prices[ATTR_VALUE][0], float)
+    assert isinstance(today_prices[ATTR_RAW_PRICE][0], float)
+    assert isinstance(today_prices[ATTR_PRICE_START][0], str)
 
     assert "hour" in series
     hour_series = series["hour"]
