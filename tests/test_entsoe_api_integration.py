@@ -1,17 +1,13 @@
+from __future__ import annotations
+
 import asyncio
-import os
-import sys
-from pathlib import Path
+from datetime import datetime, timezone
+from decimal import Decimal, ROUND_HALF_UP
 
 import pytest
 
-project_root = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(project_root))
-sys.path.insert(0, str(project_root / "custom_components"))
-sys.path.insert(0, str(project_root / "custom_components" / "entsoe_qh"))
-
-from shared.api import EntsoeApiClient
-from shared.constants import (
+from custom_components.entsoe_qh.shared.api import EntsoeApiClient, EntsoeApiError
+from custom_components.entsoe_qh.shared.constants import (
     ATTR_DURATION_MINUTES,
     ATTR_PRICES_TODAY,
     ATTR_PRICES_TOMORROW,
@@ -26,16 +22,184 @@ from shared.constants import (
     DEFAULT_DOMAIN,
     DEFAULT_ENERGY_UNIT,
 )
+from tests.assertions import assert_that
 
-@pytest.mark.integration
-def test_entsoe_api_client_real_api_returns_prices():
-    security_token = os.getenv("ENTSOE_API_KEY")
-    if security_token is None or security_token.strip() == "":
-        pytest.skip("Missing ENTSOE_API_KEY environment variable")
+
+SAMPLE_XML = """
+<Publication_MarketDocument xmlns="urn:entsoe.eu:wgedi:schema">
+  <TimeSeries>
+    <Period>
+      <timeInterval>
+        <start>2024-01-01T00:00Z</start>
+        <end>2024-01-01T01:00Z</end>
+      </timeInterval>
+      <resolution>PT15M</resolution>
+      <Point>
+        <position>1</position>
+        <price.amount>100</price.amount>
+      </Point>
+      <Point>
+        <position>2</position>
+        <price.amount>200</price.amount>
+      </Point>
+      <Point>
+        <position>3</position>
+        <price.amount>300</price.amount>
+      </Point>
+      <Point>
+        <position>4</position>
+        <price.amount>400</price.amount>
+      </Point>
+    </Period>
+    <Period>
+      <timeInterval>
+        <start>2024-01-02T00:00Z</start>
+        <end>2024-01-02T01:00Z</end>
+      </timeInterval>
+      <resolution>PT15M</resolution>
+      <Point>
+        <position>1</position>
+        <price.amount>500</price.amount>
+      </Point>
+      <Point>
+        <position>2</position>
+        <price.amount>600</price.amount>
+      </Point>
+      <Point>
+        <position>3</position>
+        <price.amount>700</price.amount>
+      </Point>
+      <Point>
+        <position>4</position>
+        <price.amount>800</price.amount>
+      </Point>
+    </Period>
+  </TimeSeries>
+</Publication_MarketDocument>
+""".strip()
+
+
+def _expected_value(price: int, rate: Decimal, vat: Decimal) -> float:
+    value = (Decimal(price) / Decimal("1000")) * rate
+    value *= (Decimal("1") + vat / Decimal("100"))
+    value = value.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP)
+    return float(value)
+
+
+def _expected_hour_value(prices: tuple[int, ...], rate: Decimal, vat: Decimal) -> float:
+    converted = [
+        (Decimal(price) / Decimal("1000")) * rate * (Decimal("1") + vat / Decimal("100"))
+        for price in prices
+    ]
+    quantized = [item.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP) for item in converted]
+    average = (sum(quantized, Decimal("0")) / Decimal(len(quantized))).quantize(
+        Decimal("0.0001"), rounding=ROUND_HALF_UP
+    )
+    return float(average)
+
+
+def _expected_hour_current(prices: tuple[int, ...], rate: Decimal, vat: Decimal) -> float:
+    converted = [
+        (Decimal(price) / Decimal("1000")) * rate * (Decimal("1") + vat / Decimal("100"))
+        for price in prices
+    ]
+    quantized = [item.quantize(Decimal("0.0001"), rounding=ROUND_HALF_UP) for item in converted]
+    average = sum(quantized, Decimal("0")) / Decimal(len(quantized))
+    return float(average)
+
+
+def test_get_converted_prices_returns_expected_structure(monkeypatch):
+    # Arrange
+    captured: dict[str, str] = {}
+
+    async def fake_fetch(self: EntsoeApiClient, start: str, end: str) -> str:
+        captured["start"] = start
+        captured["end"] = end
+        return SAMPLE_XML
+
+    monkeypatch.setattr(EntsoeApiClient, "_fetch_prices_xml", fake_fetch)
+    monkeypatch.setattr(EntsoeApiClient, "ENTSOE_TIMEZONE", None)
+
+    vat = Decimal("21")
+    rate = Decimal("0.5")
+    client = EntsoeApiClient(
+        session=None,
+        security_token="token",
+        domain=DEFAULT_DOMAIN,
+        currency=DEFAULT_CURRENCY,
+        energy_unit=DEFAULT_ENERGY_UNIT,
+        vat=float(vat),
+        currency_rate=float(rate),
+    )
+
+    now = datetime(2024, 1, 1, 0, 30, tzinfo=timezone.utc)
+
+    # Act
+    data = asyncio.run(client.get_converted_prices(now))
+
+    # Assert
+    assert_that(captured["start"]).is_equal_to("202401010000")
+    assert_that(captured["end"]).is_equal_to("202401030000")
+    assert_that(data["unit"]).is_equal_to(f"{DEFAULT_CURRENCY}/{DEFAULT_ENERGY_UNIT}")
+    assert_that(data).contains(ATTR_UPDATED_AT)
+
+    series = data[ATTR_SERIES]
+    assert_that(series).is_instance_of(dict)
+
+    quarter_series = series["quarter_hour"]
+    assert_that(quarter_series).is_instance_of(dict)
+    today_prices = quarter_series[ATTR_PRICES_TODAY]
+    tomorrow_prices = quarter_series[ATTR_PRICES_TOMORROW]
+    assert_that(today_prices[ATTR_DURATION_MINUTES]).is_equal_to(15)
+    assert_that(tomorrow_prices[ATTR_DURATION_MINUTES]).is_equal_to(15)
+
+    expected_today = [
+        _expected_value(item, rate, vat) for item in (100, 200, 300, 400)
+    ]
+    expected_tomorrow = [
+        _expected_value(item, rate, vat) for item in (500, 600, 700, 800)
+    ]
+
+    assert_that(today_prices[ATTR_VALUE]).is_equal_to(expected_today)
+    assert_that(tomorrow_prices[ATTR_VALUE]).is_equal_to(expected_tomorrow)
+    assert_that(today_prices[ATTR_PRICE_START][0]).is_equal_to("2024-01-01T00:00:00+00:00")
+    assert_that(tomorrow_prices[ATTR_PRICE_START][0]).is_equal_to("2024-01-02T00:00:00+00:00")
+    assert_that(today_prices[ATTR_PRICE_ID]).has_length(4)
+    assert_that(tomorrow_prices[ATTR_PRICE_ID]).has_length(4)
+
+    hour_series = series["hour"]
+    assert_that(hour_series).is_instance_of(dict)
+    assert_that(hour_series[ATTR_PRICES_TODAY][ATTR_VALUE]).is_equal_to([
+        _expected_hour_value((100, 200, 300, 400), rate, vat)
+    ])
+    assert_that(hour_series[ATTR_PRICES_TOMORROW][ATTR_VALUE]).is_equal_to([
+        _expected_hour_value((500, 600, 700, 800), rate, vat)
+    ])
+    assert_that(hour_series["current"]).is_equal_to(
+        _expected_hour_current((100, 200, 300, 400), rate, vat)
+    )
+    assert_that(quarter_series["current"]).is_equal_to(expected_today[2])
+
+    fields = data[ATTR_PRICE_FIELDS]
+    assert_that(fields).is_equal_to([
+        ATTR_PRICE_ID,
+        ATTR_PRICE_START,
+        ATTR_VALUE,
+        ATTR_RAW_PRICE,
+    ])
+
+
+def test_get_converted_prices_without_values_raises(monkeypatch):
+    # Arrange
+    async def fake_fetch(self: EntsoeApiClient, start: str, end: str) -> str:  # noqa: ARG001
+        return "<Publication_MarketDocument></Publication_MarketDocument>"
+
+    monkeypatch.setattr(EntsoeApiClient, "_fetch_prices_xml", fake_fetch)
+    monkeypatch.setattr(EntsoeApiClient, "ENTSOE_TIMEZONE", None)
 
     client = EntsoeApiClient(
         session=None,
-        security_token=security_token,
+        security_token="token",
         domain=DEFAULT_DOMAIN,
         currency=DEFAULT_CURRENCY,
         energy_unit=DEFAULT_ENERGY_UNIT,
@@ -43,54 +207,9 @@ def test_entsoe_api_client_real_api_returns_prices():
         currency_rate=1.0,
     )
 
-    data = asyncio.run(client.get_converted_prices())
+    # Act
+    with pytest.raises(EntsoeApiError) as err:
+        asyncio.run(client.get_converted_prices(datetime(2024, 1, 1, tzinfo=timezone.utc)))
 
-    assert data["unit"] == f"{DEFAULT_CURRENCY}/{DEFAULT_ENERGY_UNIT}"
-    assert ATTR_UPDATED_AT in data
-
-    series = data[ATTR_SERIES]
-    assert isinstance(series, dict)
-
-    assert "quarter_hour" in series
-    quarter_series = series["quarter_hour"]
-    assert isinstance(quarter_series, dict)
-
-    current_quarter = quarter_series.get("current")
-    assert current_quarter is None or isinstance(current_quarter, float)
-
-    today_prices = quarter_series[ATTR_PRICES_TODAY]
-    assert isinstance(today_prices, dict)
-    assert today_prices[ATTR_DURATION_MINUTES] == 15
-
-    tomorrow_prices = quarter_series[ATTR_PRICES_TOMORROW]
-    assert isinstance(tomorrow_prices, dict)
-    assert tomorrow_prices[ATTR_DURATION_MINUTES] == 15
-
-    fields = data[ATTR_PRICE_FIELDS]
-    assert isinstance(fields, list)
-    assert fields == [
-        ATTR_PRICE_ID,
-        ATTR_PRICE_START,
-        ATTR_VALUE,
-        ATTR_RAW_PRICE,
-    ]
-
-    for field in fields:
-        assert field in today_prices
-        assert isinstance(today_prices[field], list)
-        assert len(today_prices[field]) > 0
-        assert field in tomorrow_prices
-        assert isinstance(tomorrow_prices[field], list)
-
-    assert len({len(today_prices[field]) for field in fields}) == 1
-
-    assert isinstance(today_prices[ATTR_VALUE][0], float)
-    assert isinstance(today_prices[ATTR_RAW_PRICE][0], float)
-    assert isinstance(today_prices[ATTR_PRICE_START][0], str)
-
-    assert "hour" in series
-    hour_series = series["hour"]
-    assert isinstance(hour_series, dict)
-    current_hour = hour_series.get("current")
-    assert current_hour is None or isinstance(current_hour, float)
-    assert isinstance(hour_series[ATTR_PRICES_TODAY], list)
+    # Assert
+    assert_that(str(err.value)).is_equal_to("No price data available from ENTSO-E")

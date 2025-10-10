@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.4 - 2025-10-11
+
+- Tests now run smoothly on both Windows and Linux without requiring a Home Assistant environment.
+- Broader migration coverage reassures you that your existing setup stays intact during upgrades.
+- More ENTSO-E data scenarios are validated so unexpected API quirks will not surprise you.
+
 ## 0.4.3 - 2025-10-10
 
 - Removed Home Assistant warnings by aligning the monetary sensor behaviour with its device class.

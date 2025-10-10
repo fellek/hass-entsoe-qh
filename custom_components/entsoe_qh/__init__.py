@@ -4,9 +4,27 @@ from datetime import timedelta
 from typing import Any
 import logging
 
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+try:  # pragma: no cover - import opcjonalny dla środowiska Home Assistant
+    from homeassistant.config_entries import ConfigEntry
+    from homeassistant.core import HomeAssistant
+    from homeassistant.helpers.aiohttp_client import async_get_clientsession
+except ModuleNotFoundError:  # pragma: no cover - środowisko testowe bez Home Assistant
+    ConfigEntry = Any  # type: ignore[misc, assignment]
+    HomeAssistant = Any  # type: ignore[misc, assignment]
+
+    def async_get_clientsession(hass: Any) -> Any:  # type: ignore[unused-argument]
+        raise ModuleNotFoundError(
+            "Moduł homeassistant.helpers.aiohttp_client jest dostępny jedynie w Home Assistant."
+        )
+
+try:  # pragma: no cover - import wymagany w runtime Home Assistant
+    from .coordinator import EntsoeCoordinator
+except ModuleNotFoundError:  # pragma: no cover - środowisko testowe bez aiohttp
+    class EntsoeCoordinator:  # type: ignore[too-many-function-args]
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            raise ModuleNotFoundError(
+                "Klasa EntsoeCoordinator wymaga zależności dostępnych w Home Assistant."
+            )
 
 from .const import (
     CONF_CURRENCY,
@@ -21,8 +39,6 @@ from .const import (
     DOMAIN,
     PLATFORMS,
 )
-from .coordinator import EntsoeCoordinator
-
 _LOGGER = logging.getLogger(__name__)
 
 

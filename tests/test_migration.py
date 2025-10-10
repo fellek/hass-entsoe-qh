@@ -1,9 +1,19 @@
 import asyncio
+import pytest
 
-from custom_components.entsoe_qh import async_migrate_entry
-from custom_components.entsoe_qh.const import CONF_DOMAIN, DEFAULT_DOMAIN
+from custom_components.entsoe_qh import async_migrate_entry, _sanitize_entry_data
+from custom_components.entsoe_qh.const import (
+    CONF_CURRENCY,
+    CONF_CURRENCY_RATE,
+    CONF_DOMAIN,
+    CONF_ENERGY_UNIT,
+    CONF_VAT,
+    DEFAULT_CURRENCY,
+    DEFAULT_DOMAIN,
+    DEFAULT_ENERGY_UNIT,
+)
 
-from tests.shouldly import should
+from tests.assertions import assert_that
 
 
 class DummyConfigEntry:
@@ -34,7 +44,7 @@ class DummyHass:
 
 
 def test_async_migrate_entry_updates_unique_id_and_version():
-    # // Arrange
+    # Arrange
     entry = DummyConfigEntry(
         data={CONF_DOMAIN: DEFAULT_DOMAIN},
         version=1,
@@ -42,12 +52,70 @@ def test_async_migrate_entry_updates_unique_id_and_version():
     )
     hass = DummyHass()
 
-    # // Act
+    # Act
     result = asyncio.run(async_migrate_entry(hass, entry))
 
-    # // Assert
-    should(result).be(True)
-    should(entry.unique_id).be(DEFAULT_DOMAIN)
-    should(entry.version).be(2)
-    should(entry.data[CONF_DOMAIN]).be(DEFAULT_DOMAIN)
-    should(hass.config_entries.updates).not_be_empty()
+    # Assert
+    assert_that(result).is_true()
+    assert_that(entry.unique_id).is_equal_to(DEFAULT_DOMAIN)
+    assert_that(entry.version).is_equal_to(2)
+    assert_that(entry.data[CONF_DOMAIN]).is_equal_to(DEFAULT_DOMAIN)
+    assert_that(hass.config_entries.updates).is_not_empty()
+
+
+def test_async_migrate_entry_without_changes_keeps_configuration():
+    # Arrange
+    entry = DummyConfigEntry(
+        data={
+            CONF_DOMAIN: DEFAULT_DOMAIN,
+            CONF_CURRENCY: DEFAULT_CURRENCY,
+            CONF_ENERGY_UNIT: DEFAULT_ENERGY_UNIT,
+            CONF_VAT: 0.0,
+            CONF_CURRENCY_RATE: 1.0,
+        },
+        version=2,
+        unique_id=DEFAULT_DOMAIN,
+    )
+    hass = DummyHass()
+
+    # Act
+    result = asyncio.run(async_migrate_entry(hass, entry))
+
+    # Assert
+    assert_that(result).is_true()
+    assert_that(entry.unique_id).is_equal_to(DEFAULT_DOMAIN)
+    assert_that(entry.version).is_equal_to(2)
+    assert_that(entry.data).is_equal_to(
+        {
+            CONF_DOMAIN: DEFAULT_DOMAIN,
+            CONF_CURRENCY: DEFAULT_CURRENCY,
+            CONF_ENERGY_UNIT: DEFAULT_ENERGY_UNIT,
+            CONF_VAT: 0.0,
+            CONF_CURRENCY_RATE: 1.0,
+        }
+    )
+    assert_that(hass.config_entries.updates).is_empty()
+
+
+def test_sanitize_entry_data_normalizes_domains_and_defaults():
+    # Arrange
+    raw_data = {
+        "in_domain": DEFAULT_DOMAIN,
+        "out_domain": DEFAULT_DOMAIN,
+        CONF_DOMAIN: "",
+        "use_separate_domains": True,
+    }
+
+    # Act
+    sanitized = _sanitize_entry_data(raw_data)
+
+    # Assert
+    assert_that(sanitized).is_equal_to(
+        {
+            CONF_DOMAIN: DEFAULT_DOMAIN,
+            CONF_CURRENCY: DEFAULT_CURRENCY,
+            CONF_ENERGY_UNIT: DEFAULT_ENERGY_UNIT,
+            CONF_VAT: 0.0,
+            CONF_CURRENCY_RATE: 1.0,
+        }
+    )
