@@ -5,6 +5,7 @@ from decimal import Decimal
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
 from typing import Any, Callable, Iterable
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 import pytest
 
@@ -154,6 +155,7 @@ from entsoe_qh.sensor import (  # type: ignore  # noqa: E402
 from entsoe_qh.shared.api import EntsoeApiClient, PricePoint  # type: ignore  # noqa: E402
 from entsoe_qh.shared.constants import (  # type: ignore  # noqa: E402
     ATTR_SERIES,
+    ATTR_START,
     ATTR_TODAY,
     ATTR_TOMORROW,
 )
@@ -200,7 +202,7 @@ def _build_price_points(start: datetime, count: int, step_minutes: int) -> list[
 
 
 def test_compact_attributes_generation(api_client: EntsoeApiClient) -> None:
-    start = datetime(2025, 1, 5, tzinfo=timezone.utc)
+    start = datetime(2025, 1, 4, 23, tzinfo=timezone.utc)
     today_points = _build_price_points(start, 120, 15)
     data = api_client._convert_prices(today_points, start + timedelta(hours=10))
 
@@ -266,3 +268,28 @@ def test_sensor_uses_last_known_price_when_future_slot_missing(
     expected_value = float(points[-1].price_eur_mwh / Decimal("1000"))
     assert sensor.native_value == pytest.approx(expected_value, rel=1e-6)
     assert sensor._attr_suggested_object_id == "entso_e_energy_prices_m15"
+
+
+def test_series_uses_entsoe_timezone_for_day_boundaries(
+    api_client: EntsoeApiClient,
+) -> None:
+    try:
+        entsoe_timezone = ZoneInfo("Europe/Brussels")
+    except ZoneInfoNotFoundError:
+        entsoe_timezone = timezone(timedelta(hours=1))
+
+    start_local = datetime(2025, 1, 5, 0, 0, tzinfo=entsoe_timezone)
+    start_utc = start_local.astimezone(timezone.utc)
+    points = _build_price_points(start_utc, 96, 15)
+
+    data = api_client._convert_prices(
+        points,
+        (start_local + timedelta(minutes=30)).astimezone(timezone.utc),
+    )
+
+    series = data[ATTR_SERIES]["quarter_hour"]
+
+    assert len(series[ATTR_TODAY]) == 96
+    assert ATTR_TOMORROW not in series
+    assert series[ATTR_START] == "2025-01-05T00:00:00+01:00"
+    assert series[ATTR_TODAY][0] == pytest.approx(0.04, rel=1e-6)

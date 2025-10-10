@@ -224,6 +224,7 @@ class EntsoeApiClient:
         now: datetime | None,
     ) -> dict[str, Any]:
         current_time = self._ensure_utc(now).replace(second=0, microsecond=0)
+        current_local = self._to_entsoe_timezone(current_time)
         conversion_rate = Decimal(str(self.currency_rate))
         vat_multiplier = Decimal("1") + (Decimal(str(self.vat)) / Decimal("100"))
         energy_divisor = Decimal("1000") if self.energy_unit == "kWh" else Decimal("1")
@@ -256,12 +257,14 @@ class EntsoeApiClient:
             quarter_points,
             base_resolution,
             current_time,
+            current_local,
         )
 
         hour_series = self._build_series_payload(
             hour_points,
             60,
             current_time,
+            current_local,
         )
 
         unit = f"{self.currency}/{self.energy_unit}"
@@ -285,16 +288,17 @@ class EntsoeApiClient:
         items: list[ConvertedPoint],
         step_minutes: int,
         current_time: datetime,
+        current_local: datetime,
     ) -> dict[str, Any]:
         sorted_items = sorted(items, key=lambda item: item.start)
-        today_date = current_time.date()
-        tomorrow_date = (current_time + timedelta(days=1)).date()
+        today_date = current_local.date()
+        tomorrow_date = (current_local + timedelta(days=1)).date()
         slots_per_day = self._slots_per_day(step_minutes)
 
         today_values = self._values_for_date(sorted_items, today_date, slots_per_day)
         tomorrow_values = self._values_for_date(sorted_items, tomorrow_date, slots_per_day)
 
-        start_reference = self._series_start(sorted_items, current_time)
+        start_reference = self._series_start(sorted_items, current_local)
 
         payload: dict[str, Any] = {
             ATTR_CURRENT: self._select_current_value(sorted_items, current_time, step_minutes),
@@ -345,22 +349,22 @@ class EntsoeApiClient:
         target_date: date,
         limit: int,
     ) -> list[float]:
-        filtered = [
-            self._round_float(item.value)
-            for item in items
-            if item.start.date() == target_date
-        ]
+        filtered: list[float] = []
+        for item in items:
+            localized = self._to_entsoe_timezone(item.start)
+            if localized.date() == target_date:
+                filtered.append(self._round_float(item.value))
         return filtered[:limit]
 
     def _series_start(
         self,
         items: list[ConvertedPoint],
-        current_time: datetime,
+        current_local: datetime,
     ) -> str:
         if items:
-            reference = items[0].start
+            reference = self._to_entsoe_timezone(items[0].start)
         else:
-            reference = current_time
+            reference = current_local
         start_of_day = reference.replace(hour=0, minute=0, second=0, microsecond=0)
         return start_of_day.isoformat()
 
