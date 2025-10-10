@@ -4,7 +4,7 @@
 
 Home Assistant integration distributed through HACS that retrieves quarter-hour electricity prices from the ENTSO-E API.
 
-**Current version:** 0.5.0
+**Current version:** 0.4.0
 
 ## Features
 
@@ -15,7 +15,7 @@ Home Assistant integration distributed through HACS that retrieves quarter-hour 
 - Two sensors available:
   - `15-minute energy price` – current price for the ongoing 15-minute slot.
   - `Hourly energy price` – average price for the current hour (four quarter-hour points).
-- Sensor attributes expose lightweight daily price arrays that remain comfortably below the Home Assistant recorder limits.
+- Sensor attributes provide compact price series with per-slot identifiers, timestamps, durations and converted values that stay well below the Home Assistant recorder limits.
 
 ## Installation
 
@@ -39,33 +39,33 @@ Home Assistant integration distributed through HACS that retrieves quarter-hour 
 
 ## Using the price series in Home Assistant
 
-Each sensor keeps the entity state equal to the current converted price and publishes a concise attribute payload that contains:
+Both sensors publish a dedicated price series under the `series` attribute of their state. Each series contains:
 
-- `unit_of_measurement` and `currency` – matching the integration configuration for quick reference.
-- `start` – ISO 8601 timestamp of the midnight that corresponds to the `today` series (CET/CEST, including the offset).
-- `step_minutes` – either `15`, `30` or `60` depending on the market resolution.
-- `today` – list of floats for every slot of the current day (maximum 96 entries for PT15M).
-- `today_min`, `today_max`, `today_avg` – rounded statistics for the values included in `today`.
-- `tomorrow` – optional list of floats that appears only when the next-day schedule is available (also limited to 96 entries).
-- `tomorrow_min`, `tomorrow_max`, `tomorrow_avg` – statistics published only when `tomorrow` exists.
-- `updated_at` – ISO 8601 timestamp of the last successful refresh.
-- `source`, `in_domain`, `out_domain` – metadata describing the origin and bidding zone of the data.
+- `current` – current converted price for the associated resolution (`quarter_hour` or `hour`).
+- `prices_today` – list of dictionaries for the current day; each dictionary contains the fields listed in the `prices_fields` attribute:
+  - `id` – unique identifier built from the resolution and the slot start epoch. Use this value to de-duplicate history entries.
+  - `start` – ISO 8601 timestamp in UTC pointing to the beginning of the slot.
+  - `duration_minutes` – slot length in minutes (`15` for quarter-hour, `60` for hourly averages).
+  - `value` – converted price in the configured currency and energy unit.
+  - `price_eur_mwh` – original ENTSO-E price for reference.
+- `prices_tomorrow` – list of dictionaries formatted exactly like `prices_today`, containing the next-day forecast. These values are **not** intended for recorder history; they can be used in automations and dashboards without storing them in the database.
 
-All lists are rounded to four decimal places and trimmed to guarantee that attribute size remains well below the 16 KB recorder limit. Dashboards (for example ApexCharts) can continue to reference `today` and `tomorrow` without additional processing.
+Home Assistant history automatically retains the `current` state value. Because every update keeps the `id` stable for a given slot, no duplicate entries are generated when the integration refreshes data from ENTSO-E. When iterating over `prices_today`, insert or update records in your own helpers or statistics tables by checking the `id` to avoid storing duplicates.
+
+Price points are compact and do not exceed the Home Assistant recorder attribute size limit, ensuring that state attributes remain persistent even when the integration exposes the entire daily schedule.
 
 ### Polish translation / Tłumaczenie na język polski
 
 - `current` – bieżąca cena przeliczona dla odpowiedniej rozdzielczości (`quarter_hour` lub `hour`).
-- `today` – lista liczb zmiennoprzecinkowych opisujących ceny na dziś.
-- `today_min`, `today_max`, `today_avg` – statystyki obliczone z listy `today`.
-- `tomorrow` – lista liczb z prognozą na jutro, obecna tylko wtedy, gdy dane są dostępne.
-- `tomorrow_min`, `tomorrow_max`, `tomorrow_avg` – statystyki pojawiają się wraz z listą `tomorrow`.
-- `start` – północ dnia odpowiadającego liście `today` w czasie CET/CEST.
-- `step_minutes` – długość pojedynczego przedziału w minutach (15, 30 lub 60).
-- `updated_at` – znacznik czasu ostatniego udanego odświeżenia.
-- `source`, `in_domain`, `out_domain` – metadane wskazujące źródło i strefę taryfową.
+- `prices_today` – lista słowników dla bieżącego dnia, każdy zawiera pola opisane w `prices_fields`:
+  - `id` – unikalny identyfikator zbudowany z rozdzielczości i początku przedziału czasowego (UTC).
+  - `start` – znacznik czasu ISO 8601 w UTC wskazujący początek przedziału.
+  - `duration_minutes` – długość przedziału w minutach (`15` dla kwadransa, `60` dla godziny).
+  - `value` – cena po przeliczeniu na konfigurację waluty i jednostki energii.
+  - `price_eur_mwh` – pierwotna cena ENTSO-E jako odniesienie.
+- `prices_tomorrow` – lista słowników w tym samym formacie co `prices_today`, zawiera prognozę na jutro. Nie musi być zapisywana w historii – można z niej korzystać w automatyzacjach i na dashboardach.
 
-Historia Home Assistanta przechowuje wyłącznie stan `current`, a kompaktowe atrybuty nie przekraczają limitu rozmiaru rekordera.
+Historia Home Assistanta przechowuje wyłącznie stan `current`, a identyfikatory `id` zapewniają brak duplikatów przy ponownym pobieraniu danych z ENTSO-E.
 
 ## License
 

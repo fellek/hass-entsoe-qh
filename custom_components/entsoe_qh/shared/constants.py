@@ -84,3 +84,13 @@ ENTSOE_DOMAIN_CHOICES: list[tuple[str, str]] = [
     ("United Kingdom", "10YGB----------A"),
 ]
 
+ATTR_SERIES = "series"
+ATTR_PRICES_TODAY = "prices_today"
+ATTR_PRICES_TOMORROW = "prices_tomorrow"
+ATTR_PRICE_ID = "id"
+ATTR_PRICE_START = "start"
+ATTR_DURATION_MINUTES = "duration_minutes"
+ATTR_VALUE = "value"
+ATTR_RAW_PRICE = "price_eur_mwh"
+ATTR_UPDATED_AT = "updated_at"
+ATTR_PRICE_FIELDS = "prices_fields"

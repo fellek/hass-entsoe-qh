@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
+from typing import Any
 import logging
 
 from aiohttp import ClientSession
@@ -8,12 +9,11 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .shared.api import EntsoeApiClient, EntsoeApiError
-from .shared.models import SeriesData
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class EntsoeCoordinator(DataUpdateCoordinator[dict[str, SeriesData]]):
+class EntsoeCoordinator(DataUpdateCoordinator[dict[str, Any]]):
     def __init__(
         self,
         hass: HomeAssistant,
@@ -42,7 +42,7 @@ class EntsoeCoordinator(DataUpdateCoordinator[dict[str, SeriesData]]):
             currency_rate=currency_rate,
         )
 
-    async def _async_update_data(self) -> dict[str, SeriesData]:
+    async def _async_update_data(self) -> dict[str, Any]:
         try:
             return await self.api_client.get_converted_prices()
         except EntsoeApiError as err:
