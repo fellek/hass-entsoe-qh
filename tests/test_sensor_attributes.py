@@ -84,3 +84,22 @@ def test_sensor_uses_generic_device_class_for_prices():
     assert_that(entsoe_sensor_module.EntsoePriceSensor._attr_device_class).is_equal_to(
         None
     )
+
+
+def test_sensor_descriptions_expose_resolution_placeholders():
+    # Arrange
+    entsoe_sensor_module = pytest.importorskip("custom_components.entsoe_qh.sensor")
+    expected_labels = {
+        "quarter_hour": "15 min",
+        "half_hour": "30 min",
+        "hour": "1h",
+    }
+
+    # Act
+    descriptions = entsoe_sensor_module.SENSOR_DESCRIPTIONS
+
+    # Assert
+    for key, label in expected_labels.items():
+        description = descriptions[key]
+        assert_that(description.period_label).is_equal_to(label)
+        assert_that(description.translation_placeholders["period"]).is_equal_to(label)

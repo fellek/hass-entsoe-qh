@@ -4,7 +4,7 @@
 
 Home Assistant integration distributed through HACS that retrieves quarter-hour electricity prices from the ENTSO-E API.
 
-**Current version:** 0.4.7
+**Current version:** 0.4.9
 
 ## Features
 
@@ -36,7 +36,123 @@ Home Assistant integration distributed through HACS that retrieves quarter-hour 
 | Exchange rate versus EUR | Required when using a currency other than EUR. |
 | VAT rate (%) | Optional VAT percentage added to the calculated price. |
 
+## Entities
+
+The integration creates a dedicated sensor for each price resolution returned by ENTSO-E. The names now highlight the time span they represent so that it is easier to spot the right entity when building dashboards.
+
+| Resolution | Entity name (English UI) | Default entity ID (English UI) |
+| ---------- | ------------------------ | ------------------------------ |
+| 15 minutes | Energy price (15 min)    | `sensor.entsoe_e_energy_prices_energy_price_15_min` |
+| 30 minutes | Energy price (30 min)    | `sensor.entsoe_e_energy_prices_energy_price_30_min` |
+| 1 hour     | Energy price (1h)        | `sensor.entsoe_e_energy_prices_energy_price_1h` |
+
+> ℹ️ When Home Assistant runs in Polish, the device name becomes `ENTSO-E Ceny energii`, so the entity IDs start with `sensor.entso_e_ceny_energii_…`. Adjust the examples below to match the entity IDs shown in your instance.
+
 ## Price charts
+
+You can visualise the ENTSO-E price sensors in Home Assistant dashboards by using Lovelace custom cards. Replace the entity ID with the hourly or 30-minute sensor if that better suits your tariff.
+
+### Mini Graph Card
+
+```yaml
+type: custom:mini-graph-card
+name: Energy prices (EUR/kWh)
+entities:
+  - entity: sensor.entsoe_e_energy_prices_energy_price_15_min
+    name: Price
+hours_to_show: 48
+points_per_hour: 4
+group_by: interval
+aggregate_func: last
+line_width: 3
+lower_bound: 0
+show:
+  fill: fade
+  extrema: true
+  average: true
+  labels: true
+color_thresholds:
+  - value: 0.1
+    color: "#2ecc71"
+  - value: 0.2
+    color: "#f1c40f"
+  - value: 0.35
+    color: "#e67e22"
+  - value: 0.5
+    color: "#e74c3c"
+```
+
+### ApexCharts Card
+
+```yaml
+type: custom:apexcharts-card
+header:
+  title: Energy prices (EUR/kWh)
+  show: true
+graph_span: 48h
+now:
+  show: true
+  color: gray
+yaxis:
+  - min: 0.05
+    decimals: 2
+apex_config:
+  stroke:
+    width: 3
+    curve: stepline
+  fill:
+    type: gradient
+  dataLabels:
+    enabled: false
+  tooltip:
+    "y":
+      formatter: |
+        EVAL: (val) => (val == null ? '' : `€${val.toFixed(3)}/kWh`)
+  yaxis:
+    labels:
+      formatter: |
+        EVAL: (val) => (val == null ? '' : `${val.toFixed(2)}`)
+  annotations:
+    yaxis:
+      - "y": 0.1
+        borderColor: "#2ecc71"
+        label:
+          text: 0.10 € cheap
+      - "y": 0.2
+        borderColor: "#f1c40f"
+        label:
+          text: 0.20 € typical
+      - "y": 0.35
+        borderColor: "#e67e22"
+        label:
+          text: 0.35 € expensive
+      - "y": 0.5
+        borderColor: "#e74c3c"
+        label:
+          text: 0.50 € very expensive
+    regions:
+      - "y": 0
+        y2: 0.1
+        fillColor: rgba(46,204,113,0.10)
+      - "y": 0.1
+        y2: 0.2
+        fillColor: rgba(241,196,15,0.10)
+      - "y": 0.2
+        y2: 0.35
+        fillColor: rgba(230,126,34,0.08)
+      - "y": 0.35
+        y2: 5.5
+        fillColor: rgba(231,76,60,0.08)
+series:
+  - entity: sensor.entsoe_e_energy_prices_energy_price_15_min
+    name: Price
+    type: line
+    group_by:
+      duration: 15min
+      func: last
+    show:
+      extremas: true
+```
 
 ## License
 

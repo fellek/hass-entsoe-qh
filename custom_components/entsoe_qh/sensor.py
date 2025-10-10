@@ -30,6 +30,11 @@ class EntsoeSensorDescription:
     key: str
     translation_key: str
     series_key: str
+    period_label: str
+
+    @property
+    def translation_placeholders(self) -> dict[str, str]:
+        return {"period": self.period_label}
 
 
 SENSOR_DESCRIPTIONS: dict[str, EntsoeSensorDescription] = {
@@ -37,16 +42,19 @@ SENSOR_DESCRIPTIONS: dict[str, EntsoeSensorDescription] = {
         key="quarter_hour",
         translation_key="quarter_hour_price",
         series_key="quarter_hour",
+        period_label="15 min",
     ),
     "half_hour": EntsoeSensorDescription(
         key="half_hour",
         translation_key="half_hour_price",
         series_key="half_hour",
+        period_label="30 min",
     ),
     "hour": EntsoeSensorDescription(
         key="hour",
         translation_key="hour_price",
         series_key="hour",
+        period_label="1h",
     ),
 }
 
@@ -88,6 +96,9 @@ class EntsoePriceSensor(CoordinatorEntity[EntsoeCoordinator], SensorEntity):
         self._attr_has_entity_name = True
         self._attr_unique_id = f"{entry.entry_id}_{description.key}"
         self._attr_translation_key = description.translation_key
+        self._attr_translation_placeholders = (
+            description.translation_placeholders
+        )
 
     @property
     def native_value(self) -> float | None:

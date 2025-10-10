@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.4.9 - 2025-10-16
+
+- Price sensor names now spell out their resolution (15 min, 30 min, 1h) so you can instantly pick the right entity.
+- Refreshed the Lovelace chart examples to match the updated entity IDs and highlight the available resolutions.
+
+## 0.4.8 - 2025-10-15
+
+- Added ready-to-use Lovelace chart examples so you can visualise the ENTSO-E prices without manual tweaking.
+
 ## 0.4.7 - 2025-10-14
 
 - Price sensors now align with Home Assistant's measurement rules, removing the monetary device warnings while keeping long-term statistics intact.
