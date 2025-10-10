@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.7 - 2025-10-14
+
+- Price sensors now align with Home Assistant's measurement rules, removing the monetary device warnings while keeping long-term statistics intact.
+
 ## 0.4.6 - 2025-10-13
 
 - Restored long-term statistics for the monetary sensors while keeping their history reliable.

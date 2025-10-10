@@ -73,3 +73,14 @@ def test_sensor_uses_measurement_state_class():
     assert_that(entsoe_sensor_module.EntsoePriceSensor._attr_state_class).is_equal_to(
         sensor_module.SensorStateClass.MEASUREMENT
     )
+
+
+def test_sensor_uses_generic_device_class_for_prices():
+    # Arrange
+    entsoe_sensor_module = pytest.importorskip("custom_components.entsoe_qh.sensor")
+
+    # Act
+    # Assert
+    assert_that(entsoe_sensor_module.EntsoePriceSensor._attr_device_class).is_equal_to(
+        None
+    )

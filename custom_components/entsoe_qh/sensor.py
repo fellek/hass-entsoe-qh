@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.sensor import (
-    SensorDeviceClass,
     SensorEntity,
     SensorStateClass,
 )
@@ -74,7 +73,7 @@ async def async_setup_entry(
 
 
 class EntsoePriceSensor(CoordinatorEntity[EntsoeCoordinator], SensorEntity):
-    _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_device_class = None
     _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
