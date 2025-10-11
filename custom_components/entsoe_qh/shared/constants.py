@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Final
+
 DOMAIN = "entsoe_qh"
 PLATFORMS: list[str] = ["sensor"]
 ENTSOE_API_URL = "https://web-api.tp.entsoe.eu/api"
@@ -83,6 +85,13 @@ ENTSOE_DOMAIN_CHOICES: list[tuple[str, str]] = [
     ("Ukraine", "10YUA-WEPS-----0"),
     ("United Kingdom", "10YGB----------A"),
 ]
+
+ENTSOE_DOMAIN_EXPECTED_RESOLUTIONS: Final[dict[str, tuple[int, ...]]] = {
+    domain: (60,) for _, domain in ENTSOE_DOMAIN_CHOICES
+}
+
+for half_hour_domain in ("10Y1001A1001A59C", "10YIE-1001A00010"):
+    ENTSOE_DOMAIN_EXPECTED_RESOLUTIONS[half_hour_domain] = (30, 60)
 
 ATTR_SERIES = "series"
 ATTR_PRICES_TODAY = "prices_today"

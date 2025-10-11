@@ -4,7 +4,7 @@
 
 Home Assistant integration distributed through HACS that retrieves electricity prices from the ENTSO-E API in the finest resolution available for your bidding zone.
 
-**Current version:** 0.4.13
+**Current version:** 0.4.16
 
 ## Features
 
@@ -69,6 +69,10 @@ Each sensor exposes a compact attribute payload that follows the same structure 
 - `prices_today` / `prices_tomorrow`: Contain the first 10 entries published by ENTSO-E for the given resolution, the total number of available points, and a flag indicating whether the list was truncated. Timestamps are normalised to UTC so they are easy to compare inside templates and automations.
 
 Tomorrow's list stays empty until ENTSO-E releases the data for your bidding zone.
+
+## Testing
+
+Live integration checks hit the ENTSO-E Transparency Platform to verify every configured bidding zone. Set the `ENTSOE_API_KEY` environment variable with your personal API token before running `pytest -m integration` so the tests can authenticate successfully.
 
 ### Mini Graph Card
 

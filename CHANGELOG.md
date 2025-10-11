@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.16 - 2025-10-13
+
+- Restored the detailed ENTSO-E parsing checks alongside the live call so unit tests keep guarding data conversion.
+- Relaxed the live verification to accept extra resolutions delivered by ENTSO-E while still confirming expected ones.
+
+## 0.4.15 - 2025-10-12
+
+- Restored the real ENTSO-E integration test so you can verify authentic price data flows with your token.
+- Unified the API token environment variable in the docs and tests to make setup quicker.
+
+## 0.4.14 - 2025-10-11
+
+- Added live verification across all supported bidding zones so you can trust the integration fetches the right ENTSO-E periods.
+
 ## 0.4.13 - 2025-10-20
 
 - Updated the README so it tells you the integration delivers whichever ENTSO-E resolution your area publishes, not just quarter-hour prices.
