@@ -13,7 +13,7 @@ from custom_components.entsoe_qh.const import (
     DEFAULT_ENERGY_UNIT,
 )
 
-from tests.assertions import assert_that
+from assertpy import assert_that
 
 
 class DummyConfigEntry:

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.4.17 - 2025-10-14
+
+- Swapped the custom helpers for assertpy assertions so your local checks use a familiar, well-supported library.
+
 ## 0.4.16 - 2025-10-13
 
 - Restored the detailed ENTSO-E parsing checks alongside the live call so unit tests keep guarding data conversion.

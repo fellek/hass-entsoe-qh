@@ -3,7 +3,7 @@ from __future__ import annotations
 import sys
 from types import ModuleType
 
-from tests.assertions import assert_that
+from assertpy import assert_that
 
 
 class DummyModule(ModuleType):

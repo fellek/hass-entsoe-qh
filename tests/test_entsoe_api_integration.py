@@ -21,7 +21,7 @@ from custom_components.entsoe_qh.shared.constants import (
     DEFAULT_DOMAIN,
     DEFAULT_ENERGY_UNIT,
 )
-from tests.assertions import assert_that
+from assertpy import assert_that
 
 
 TOKEN_ENVIRONMENT_VARIABLE = "ENTSOE_API_KEY"

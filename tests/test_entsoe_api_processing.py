@@ -22,7 +22,7 @@ from custom_components.entsoe_qh.shared.constants import (
     DEFAULT_DOMAIN,
     DEFAULT_ENERGY_UNIT,
 )
-from tests.assertions import assert_that
+from assertpy import assert_that
 
 
 SAMPLE_XML = """
@@ -151,7 +151,7 @@ def test_get_converted_prices_returns_expected_structure(
     assert_that(series).is_instance_of(dict)
     assert_that(series).contains("quarter_hour")
     assert_that(series).contains("hour")
-    assert_that(series).has_length(2)
+    assert_that(series).is_length(2)
 
     quarter_series = series["quarter_hour"]
     assert_that(quarter_series).is_instance_of(dict)
@@ -171,8 +171,8 @@ def test_get_converted_prices_returns_expected_structure(
     assert_that(tomorrow_prices[ATTR_VALUE]).is_equal_to(expected_tomorrow)
     assert_that(today_prices[ATTR_PRICE_START][0]).is_equal_to("2024-01-01T00:00:00+00:00")
     assert_that(tomorrow_prices[ATTR_PRICE_START][0]).is_equal_to("2024-01-02T00:00:00+00:00")
-    assert_that(today_prices[ATTR_PRICE_ID]).has_length(4)
-    assert_that(tomorrow_prices[ATTR_PRICE_ID]).has_length(4)
+    assert_that(today_prices[ATTR_PRICE_ID]).is_length(4)
+    assert_that(tomorrow_prices[ATTR_PRICE_ID]).is_length(4)
 
     hour_series = series["hour"]
     assert_that(hour_series).is_instance_of(dict)
@@ -249,7 +249,7 @@ def test_get_converted_prices_with_hourly_resolution_returns_only_hour_series(
     # Assert
     series = data[ATTR_SERIES]
     assert_that(series).contains("hour")
-    assert_that(series).has_length(1)
+    assert_that(series).is_length(1)
     assert_that("quarter_hour" in series).is_false()
     assert_that("half_hour" in series).is_false()
 

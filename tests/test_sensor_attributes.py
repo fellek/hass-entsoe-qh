@@ -17,7 +17,7 @@ from custom_components.entsoe_qh.shared.constants import (
     ATTR_SERIES_TRUNCATED,
     ATTR_VALUE,
 )
-from tests.assertions import assert_that
+from assertpy import assert_that
 
 
 def _iso(dt: datetime) -> str:
@@ -44,10 +44,10 @@ def test_compact_series_attributes_limits_payload_size():
 
     # Assert
     assert_that(compacted[ATTR_SERIES_TOTAL_POINTS]).is_equal_to(len(values))
-    assert_that(compacted[ATTR_PRICE_ID]).has_length(MAX_SERIES_POINTS)
-    assert_that(compacted[ATTR_VALUE]).has_length(MAX_SERIES_POINTS)
-    assert_that(compacted[ATTR_RAW_PRICE]).has_length(MAX_SERIES_POINTS)
-    assert_that(compacted[ATTR_PRICE_START]).has_length(MAX_SERIES_POINTS)
+    assert_that(compacted[ATTR_PRICE_ID]).is_length(MAX_SERIES_POINTS)
+    assert_that(compacted[ATTR_VALUE]).is_length(MAX_SERIES_POINTS)
+    assert_that(compacted[ATTR_RAW_PRICE]).is_length(MAX_SERIES_POINTS)
+    assert_that(compacted[ATTR_PRICE_START]).is_length(MAX_SERIES_POINTS)
     assert_that(compacted[ATTR_SERIES_TRUNCATED]).is_true()
     assert_that(all(item.endswith("Z") for item in compacted[ATTR_PRICE_START])).is_true()
 

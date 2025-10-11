@@ -4,7 +4,7 @@
 
 Home Assistant integration distributed through HACS that retrieves electricity prices from the ENTSO-E API in the finest resolution available for your bidding zone.
 
-**Current version:** 0.4.16
+**Current version:** 0.4.17
 
 ## Features
 
@@ -71,6 +71,8 @@ Each sensor exposes a compact attribute payload that follows the same structure 
 Tomorrow's list stays empty until ENTSO-E releases the data for your bidding zone.
 
 ## Testing
+
+Install the test dependencies with `pip install assertpy` before running the suite.
 
 Live integration checks hit the ENTSO-E Transparency Platform to verify every configured bidding zone. Set the `ENTSOE_API_KEY` environment variable with your personal API token before running `pytest -m integration` so the tests can authenticate successfully.
 

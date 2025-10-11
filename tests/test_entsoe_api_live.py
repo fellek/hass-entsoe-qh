@@ -22,7 +22,7 @@ from custom_components.entsoe_qh.shared.constants import (
     ENTSOE_DOMAIN_CHOICES,
     ENTSOE_DOMAIN_EXPECTED_RESOLUTIONS,
 )
-from tests.assertions import assert_that
+from assertpy import assert_that
 
 
 TOKEN_ENVIRONMENT_VARIABLE = "ENTSOE_API_KEY"
