@@ -37,6 +37,7 @@ ENTSOE_DOMAIN_CHOICES: list[tuple[str, str]] = [
     ("France", "10YFR-RTE------C"),
     ("Georgia", "10Y1001A1001B012"),
     ("Greece", "10YGR-HTSO-----Y"),
+    ("Germany-Luxembourg (DE-LU)","10Y1001A1001A82H"),
     ("Germany", "10YDE-VE-------2"),
     ("Germany", "10YDE-RWENET---I"),
     ("Germany", "10YDE-EON------1"),
