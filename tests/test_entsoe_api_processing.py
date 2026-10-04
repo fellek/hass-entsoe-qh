@@ -191,9 +191,7 @@ def test_get_converted_prices_returns_expected_structure(
 
     fields = data[ATTR_PRICE_FIELDS]
     assert_that(fields).is_equal_to([
-        ATTR_PRICE_ID,
         ATTR_PRICE_START,
-        ATTR_VALUE,
         ATTR_RAW_PRICE,
     ])
 
@@ -285,3 +283,96 @@ def test_get_converted_prices_without_values_raises(
 
     # Assert
     assert_that(str(err.value)).is_equal_to("No price data available from ENTSO-E")
+
+
+def _series_xml(
+    prices: dict[int, int],
+    *,
+    sequence: int | None = None,
+    curve_type: str | None = None,
+    end: str = "2024-01-01T00:30Z",
+) -> str:
+    sequence_xml = (
+        "<classificationSequence_AttributeInstanceComponent.position>"
+        f"{sequence}</classificationSequence_AttributeInstanceComponent.position>"
+        if sequence is not None
+        else ""
+    )
+    curve_xml = f"<curveType>{curve_type}</curveType>" if curve_type else ""
+    points_xml = "".join(
+        f"<Point><position>{position}</position><price.amount>{price}</price.amount></Point>"
+        for position, price in prices.items()
+    )
+    return (
+        f"<TimeSeries>{sequence_xml}{curve_xml}<Period>"
+        f"<timeInterval><start>2024-01-01T00:00Z</start><end>{end}</end></timeInterval>"
+        f"<resolution>PT15M</resolution>{points_xml}</Period></TimeSeries>"
+    )
+
+
+def _document_xml(*series: str) -> str:
+    return (
+        '<Publication_MarketDocument xmlns="urn:entsoe.eu:wgedi:schema">'
+        + "".join(series)
+        + "</Publication_MarketDocument>"
+    )
+
+
+def _client() -> EntsoeApiClient:
+    return EntsoeApiClient(
+        session=None,
+        security_token="token",
+        domain=DEFAULT_DOMAIN,
+        currency=DEFAULT_CURRENCY,
+        energy_unit=DEFAULT_ENERGY_UNIT,
+        vat=0.0,
+        currency_rate=1.0,
+    )
+
+
+def test_parse_prices_prefers_classification_sequence_one() -> None:
+    # Arrange
+    xml_text = _document_xml(
+        _series_xml({1: 300, 2: 400}, sequence=2),
+        _series_xml({1: 100, 2: 200}, sequence=1),
+    )
+
+    # Act
+    points = _client()._parse_prices(xml_text)
+
+    # Assert
+    assert_that([point.price_eur_mwh for point in points]).is_equal_to(
+        [Decimal("100"), Decimal("200")]
+    )
+
+
+def test_parse_prices_fills_gaps_for_curve_type_a03() -> None:
+    # Arrange
+    xml_text = _document_xml(
+        _series_xml({1: 10, 3: 30}, curve_type="A03", end="2024-01-01T01:00Z"),
+    )
+
+    # Act
+    points = _client()._parse_prices(xml_text)
+
+    # Assert
+    assert_that([point.price_eur_mwh for point in points]).is_equal_to(
+        [Decimal("10"), Decimal("10"), Decimal("30"), Decimal("30")]
+    )
+    assert_that([point.timestamp.minute for point in points]).is_equal_to([0, 15, 30, 45])
+
+
+def test_parse_prices_drops_duplicate_slots_without_sequence() -> None:
+    # Arrange
+    xml_text = _document_xml(
+        _series_xml({1: 100, 2: 200}),
+        _series_xml({1: 999, 2: 999}),
+    )
+
+    # Act
+    points = _client()._parse_prices(xml_text)
+
+    # Assert
+    assert_that([point.price_eur_mwh for point in points]).is_equal_to(
+        [Decimal("100"), Decimal("200")]
+    )

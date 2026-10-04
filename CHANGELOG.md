@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.18 - 2026-10-04
+
+- `prices_today` and `prices_tomorrow` now contain the full day instead of the first 10 entries; the `truncated` flag is gone and `total_points` matches the list length.
+- The price attributes only carry `start` and `price_eur_mwh`; `id` and `value` were dropped to keep the payload small.
+- When ENTSO-E returns several series for the same zone and day (DE-LU), only classification sequence 1 (SDAC day-ahead) is used, so every timestamp appears once. The hourly average no longer mixes both series.
+- Quarter hours omitted by ENTSO-E for unchanged prices (curve type A03) are filled with the previous price.
+
 ## 0.4.17 - 2025-10-14
 
 - Swapped the custom helpers for assertpy assertions so your local checks use a familiar, well-supported library.

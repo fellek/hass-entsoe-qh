@@ -56,7 +56,7 @@ def test_entsoe_api_client_real_api_returns_prices() -> None:
     assert_that(data[ATTR_SERIES]).is_instance_of(dict)
     assert_that(data).contains(ATTR_PRICE_FIELDS)
     assert_that(data[ATTR_PRICE_FIELDS]).is_equal_to(
-        [ATTR_PRICE_ID, ATTR_PRICE_START, ATTR_VALUE, ATTR_RAW_PRICE]
+        [ATTR_PRICE_START, ATTR_RAW_PRICE]
     )
 
     series = data[ATTR_SERIES]

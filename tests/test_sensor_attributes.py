@@ -14,7 +14,6 @@ from custom_components.entsoe_qh.shared.constants import (
     ATTR_PRICE_START,
     ATTR_RAW_PRICE,
     ATTR_SERIES_TOTAL_POINTS,
-    ATTR_SERIES_TRUNCATED,
     ATTR_VALUE,
 )
 from assertpy import assert_that
@@ -24,32 +23,64 @@ def _iso(dt: datetime) -> str:
     return dt.astimezone(timezone.utc).isoformat()
 
 
-def test_compact_series_attributes_limits_payload_size():
-    # Arrange
+def _quarter_hour_series(count: int) -> dict:
     base_time = datetime(2024, 1, 1, tzinfo=timezone.utc)
-    values = [float(index) for index in range(MAX_SERIES_POINTS + 5)]
-    series = {
+    values = [float(index) for index in range(count)]
+    return {
         ATTR_DURATION_MINUTES: 15,
-        ATTR_PRICE_ID: [f"pt15m-{index}" for index in range(len(values))],
+        ATTR_PRICE_ID: [f"pt15m-{index}" for index in range(count)],
         ATTR_PRICE_START: [
-            _iso(base_time + timedelta(minutes=15 * index))
-            for index in range(len(values))
+            _iso(base_time + timedelta(minutes=15 * index)) for index in range(count)
         ],
         ATTR_VALUE: values,
         ATTR_RAW_PRICE: [value * 10 for value in values],
     }
 
+
+def test_compact_series_attributes_returns_full_day_with_start_and_raw_price():
+    # Arrange
+    series = _quarter_hour_series(96)
+
     # Act
     compacted = compact_series_attributes(series)
 
     # Assert
-    assert_that(compacted[ATTR_SERIES_TOTAL_POINTS]).is_equal_to(len(values))
-    assert_that(compacted[ATTR_PRICE_ID]).is_length(MAX_SERIES_POINTS)
-    assert_that(compacted[ATTR_VALUE]).is_length(MAX_SERIES_POINTS)
-    assert_that(compacted[ATTR_RAW_PRICE]).is_length(MAX_SERIES_POINTS)
-    assert_that(compacted[ATTR_PRICE_START]).is_length(MAX_SERIES_POINTS)
-    assert_that(compacted[ATTR_SERIES_TRUNCATED]).is_true()
+    assert_that(set(compacted)).is_equal_to(
+        {ATTR_DURATION_MINUTES, ATTR_PRICE_START, ATTR_RAW_PRICE, ATTR_SERIES_TOTAL_POINTS}
+    )
+    assert_that(compacted[ATTR_DURATION_MINUTES]).is_equal_to(15)
+    assert_that(compacted[ATTR_SERIES_TOTAL_POINTS]).is_equal_to(96)
+    assert_that(compacted[ATTR_RAW_PRICE]).is_equal_to(series[ATTR_RAW_PRICE])
+    assert_that(compacted[ATTR_PRICE_START]).is_length(96)
+    assert_that(compacted[ATTR_PRICE_START][0]).is_equal_to("2024-01-01T00:00Z")
     assert_that(all(item.endswith("Z") for item in compacted[ATTR_PRICE_START])).is_true()
+
+
+def test_compact_series_attributes_applies_safety_cap():
+    # Arrange
+    series = _quarter_hour_series(MAX_SERIES_POINTS + 5)
+
+    # Act
+    compacted = compact_series_attributes(series)
+
+    # Assert
+    assert_that(compacted[ATTR_PRICE_START]).is_length(MAX_SERIES_POINTS)
+    assert_that(compacted[ATTR_RAW_PRICE]).is_length(MAX_SERIES_POINTS)
+    assert_that(compacted[ATTR_SERIES_TOTAL_POINTS]).is_equal_to(MAX_SERIES_POINTS)
+
+
+def test_compact_series_attributes_keeps_lists_aligned():
+    # Arrange
+    series = _quarter_hour_series(4)
+    series[ATTR_RAW_PRICE] = series[ATTR_RAW_PRICE][:3]
+
+    # Act
+    compacted = compact_series_attributes(series)
+
+    # Assert
+    assert_that(compacted[ATTR_PRICE_START]).is_length(3)
+    assert_that(compacted[ATTR_RAW_PRICE]).is_length(3)
+    assert_that(compacted[ATTR_SERIES_TOTAL_POINTS]).is_equal_to(3)
 
 
 def test_compact_series_attributes_handles_empty_values():

@@ -4,7 +4,7 @@
 
 Home Assistant integration distributed through HACS that retrieves electricity prices from the ENTSO-E API in the finest resolution available for your bidding zone.
 
-**Current version:** 0.4.17
+**Current version:** 0.4.18
 
 ## Features
 
@@ -65,8 +65,10 @@ Each sensor exposes a compact attribute payload that follows the same structure 
 
 - `unit`: Set on the sensor state and matches the configured currency and energy unit (for example `PLN/kWh`).
 - `updated_at`: ISO 8601 timestamp of the last successful download.
-- `price_fields`: Ordered list of keys describing how to read the price arrays (`id`, `start`, `value`, `price_eur_mwh`).
-- `prices_today` / `prices_tomorrow`: Contain the first 10 entries published by ENTSO-E for the given resolution, the total number of available points, and a flag indicating whether the list was truncated. Timestamps are normalised to UTC so they are easy to compare inside templates and automations.
+- `prices_fields`: Ordered list of keys describing how to read the price arrays (`start`, `price_eur_mwh`).
+- `prices_today` / `prices_tomorrow`: Contain all entries for the given resolution as two position-aligned lists, `start` and `price_eur_mwh`, plus `total_points` with the list length. Prices are the raw ENTSO-E values in EUR/MWh, without VAT or currency conversion; the converted price is the sensor state. Timestamps are normalised to UTC so they are easy to compare inside templates and automations.
+
+When ENTSO-E publishes several price series for the same bidding zone and day, the integration uses the series with classification sequence 1. For DE-LU this was verified to be the SDAC day-ahead auction. Quarter hours that ENTSO-E omits because the price did not change (curve type A03) are filled with the previous price.
 
 Tomorrow's list stays empty until ENTSO-E releases the data for your bidding zone.
 

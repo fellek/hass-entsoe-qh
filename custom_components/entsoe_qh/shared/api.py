@@ -162,11 +162,30 @@ class EntsoeApiClient:
         namespace = {"ns": namespace_uri} if namespace_uri is not None else {}
         prefix = "ns:" if namespace else ""
         points: list[PricePoint] = []
+        seen_slots: set[tuple[datetime, int]] = set()
+        dropped_duplicates = 0
 
-        for series in root.findall(f".//{prefix}TimeSeries", namespace):
+        # Some bidding zones (e.g. DE-LU) publish several TimeSeries for the same
+        # delivery day, distinguished only by the classification sequence.
+        # Sequence 1 is the SDAC day-ahead auction (verified against
+        # Energy-Charts for DE-LU on 2026-10-03/04); the origin of sequence 2 is
+        # unidentified. Series are processed in sequence order and the first
+        # value per slot wins, so sequence 1 takes precedence.
+        series_list = sorted(
+            root.findall(f".//{prefix}TimeSeries", namespace),
+            key=lambda item: self._classification_sequence(item, prefix, namespace),
+        )
+
+        for series in series_list:
+            curve_type = (
+                series.findtext(f"{prefix}curveType", namespaces=namespace) or ""
+            ).strip()
             for period in series.findall(f"{prefix}Period", namespace):
                 start_text = period.findtext(
                     f"{prefix}timeInterval/{prefix}start", namespaces=namespace
+                )
+                end_text = period.findtext(
+                    f"{prefix}timeInterval/{prefix}end", namespaces=namespace
                 )
                 resolution_text = period.findtext(
                     f"{prefix}resolution", namespaces=namespace
@@ -177,6 +196,9 @@ class EntsoeApiClient:
                 start_time = self._parse_datetime(start_text)
                 if start_time is None:
                     continue
+                end_time = self._parse_datetime(end_text) if end_text else None
+
+                prices_by_position: dict[int, Decimal] = {}
                 for point in period.findall(f"{prefix}Point", namespace):
                     position_text = point.findtext(
                         f"{prefix}position", namespaces=namespace
@@ -191,9 +213,27 @@ class EntsoeApiClient:
                         price = Decimal(price_text)
                     except (ValueError, InvalidOperation):
                         continue
+                    prices_by_position.setdefault(position, price)
+
+                if curve_type == "A03" and end_time is not None:
+                    slot_count = int(
+                        (end_time - start_time) / timedelta(minutes=resolution_minutes)
+                    )
+                    prices_by_position = self._fill_variable_blocks(
+                        prices_by_position, slot_count
+                    )
+
+                for position, price in sorted(prices_by_position.items()):
                     timestamp = start_time + timedelta(
                         minutes=resolution_minutes * (position - 1)
                     )
+                    # Safety net: never emit a slot twice, even if the series
+                    # cannot be told apart by their classification sequence.
+                    slot = (timestamp, resolution_minutes)
+                    if slot in seen_slots:
+                        dropped_duplicates += 1
+                        continue
+                    seen_slots.add(slot)
                     points.append(
                         PricePoint(
                             timestamp=timestamp,
@@ -202,8 +242,42 @@ class EntsoeApiClient:
                         )
                     )
 
+        if dropped_duplicates:
+            _LOGGER.debug(
+                "Dropped %s duplicate price points from lower-priority series.",
+                dropped_duplicates,
+            )
+
         points.sort(key=lambda item: item.timestamp)
         return points
+
+    @staticmethod
+    def _classification_sequence(
+        series: ET.Element, prefix: str, namespace: dict[str, str]
+    ) -> int:
+        text = series.findtext(
+            f"{prefix}classificationSequence_AttributeInstanceComponent.position",
+            namespaces=namespace,
+        )
+        try:
+            return int(text) if text is not None else 1
+        except ValueError:
+            return 1
+
+    @staticmethod
+    def _fill_variable_blocks(
+        prices_by_position: dict[int, Decimal], slot_count: int
+    ) -> dict[int, Decimal]:
+        """Expand curveType A03, where a missing position repeats the previous price."""
+
+        filled: dict[int, Decimal] = {}
+        last_price: Decimal | None = None
+        for position in range(1, slot_count + 1):
+            if position in prices_by_position:
+                last_price = prices_by_position[position]
+            if last_price is not None:
+                filled[position] = last_price
+        return filled
 
     @staticmethod
     def _detect_namespace(tag: str) -> str | None:
@@ -295,9 +369,7 @@ class EntsoeApiClient:
             "unit": unit,
             ATTR_SERIES: series,
             ATTR_PRICE_FIELDS: [
-                ATTR_PRICE_ID,
                 ATTR_PRICE_START,
-                ATTR_VALUE,
                 ATTR_RAW_PRICE,
             ],
             ATTR_UPDATED_AT: datetime.now(timezone.utc).isoformat(),

@@ -7,15 +7,15 @@ from typing import Any
 
 from .constants import (
     ATTR_DURATION_MINUTES,
-    ATTR_PRICE_ID,
     ATTR_PRICE_START,
     ATTR_RAW_PRICE,
     ATTR_SERIES_TOTAL_POINTS,
-    ATTR_SERIES_TRUNCATED,
-    ATTR_VALUE,
 )
 
-MAX_SERIES_POINTS = 10
+# Safety cap only. A local day has at most 100 quarter hours (DST end), so the
+# cap never applies in normal operation and keeps the payload well below the
+# recorder's 16 KB attribute limit.
+MAX_SERIES_POINTS = 200
 
 
 def compact_series_attributes(
@@ -23,38 +23,27 @@ def compact_series_attributes(
     *,
     max_points: int = MAX_SERIES_POINTS,
 ) -> dict[str, Any]:
-    """Return a compact representation of price series metadata."""
+    """Return the start times and raw prices of a price series."""
 
     if not isinstance(series, dict) or max_points <= 0:
         return {}
 
-    values = _ensure_list(series.get(ATTR_VALUE))
-    total_points = len(values)
-    limit = min(max_points, total_points)
+    starts = _ensure_list(series.get(ATTR_PRICE_START))
+    raw_prices = _ensure_list(series.get(ATTR_RAW_PRICE))
+    limit = min(len(starts), len(raw_prices), max_points)
 
-    if total_points == 0:
+    if limit == 0:
         return {
             ATTR_DURATION_MINUTES: series.get(ATTR_DURATION_MINUTES),
             ATTR_SERIES_TOTAL_POINTS: 0,
         }
 
-    price_ids = _ensure_list(series.get(ATTR_PRICE_ID))[:limit]
-    starts = _ensure_list(series.get(ATTR_PRICE_START))[:limit]
-    raw_prices = _ensure_list(series.get(ATTR_RAW_PRICE))[:limit]
-
-    compacted = {
+    return {
         ATTR_DURATION_MINUTES: series.get(ATTR_DURATION_MINUTES),
-        ATTR_PRICE_ID: price_ids,
-        ATTR_PRICE_START: [_format_start(item) for item in starts],
-        ATTR_VALUE: values[:limit],
-        ATTR_RAW_PRICE: raw_prices,
-        ATTR_SERIES_TOTAL_POINTS: total_points,
+        ATTR_PRICE_START: [_format_start(item) for item in starts[:limit]],
+        ATTR_RAW_PRICE: raw_prices[:limit],
+        ATTR_SERIES_TOTAL_POINTS: limit,
     }
-
-    if total_points > limit:
-        compacted[ATTR_SERIES_TRUNCATED] = True
-
-    return compacted
 
 
 def _ensure_list(value: Any) -> list[Any]:

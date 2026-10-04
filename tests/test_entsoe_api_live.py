@@ -66,10 +66,7 @@ def test_entsoe_api_returns_expected_series(country_name: str, domain: str) -> N
     assert_that(data).contains(ATTR_SERIES)
     assert_that(data[ATTR_SERIES]).is_instance_of(dict)
     assert_that(data).contains(ATTR_PRICE_FIELDS)
-    assert_that(data[ATTR_PRICE_FIELDS]).contains(ATTR_PRICE_ID)
-    assert_that(data[ATTR_PRICE_FIELDS]).contains(ATTR_PRICE_START)
-    assert_that(data[ATTR_PRICE_FIELDS]).contains(ATTR_VALUE)
-    assert_that(data[ATTR_PRICE_FIELDS]).contains(ATTR_RAW_PRICE)
+    assert_that(data[ATTR_PRICE_FIELDS]).is_equal_to([ATTR_PRICE_START, ATTR_RAW_PRICE])
     assert_that(data).contains(ATTR_UPDATED_AT)
 
     series = data[ATTR_SERIES]
