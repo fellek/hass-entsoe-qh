@@ -64,7 +64,16 @@ if "homeassistant" not in sys.modules:
             return kwargs
 
     class OptionsFlow:  # type: ignore[too-few-public-methods]
-        hass = DummyModule("hass", config_entries=DummyModule("manager"))
+        # Mirrors Home Assistant 2025.12: the flow manager sets hass and handler
+        # after construction, and config_entry is a read-only property.
+        hass = None
+        handler: str | None = None
+
+        @property
+        def config_entry(self):
+            if self.hass is None or self.handler is None:
+                raise ValueError("The config entry is not available during initialisation")
+            return self.hass.config_entries.async_get_known_entry(self.handler)
 
         def async_show_form(self, **kwargs):
             return kwargs
@@ -128,8 +137,18 @@ from custom_components.entsoe_qh.config_flow import (  # noqa: E402  # isort:ski
 
 
 class DummyConfigEntry:
-    def __init__(self) -> None:
+    def __init__(self, entry_id: str = "entry-1") -> None:
+        self.entry_id = entry_id
         self.data: dict[str, object] = {}
+
+
+class DummyConfigEntryManager:
+    def __init__(self, entry: DummyConfigEntry) -> None:
+        self._entry = entry
+
+    def async_get_known_entry(self, entry_id: str) -> DummyConfigEntry:
+        assert_that(entry_id).is_equal_to(self._entry.entry_id)
+        return self._entry
 
 
 def test_async_get_options_flow_provides_options_handler():
@@ -138,7 +157,11 @@ def test_async_get_options_flow_provides_options_handler():
 
     # Act
     options_flow = EntsoeConfigFlow.async_get_options_flow(config_entry)
+    options_flow.hass = DummyModule(
+        "hass", config_entries=DummyConfigEntryManager(config_entry)
+    )
+    options_flow.handler = config_entry.entry_id
 
     # Assert
     assert_that(options_flow).is_instance_of(EntsoeOptionsFlow)
-    assert_that(options_flow.config_entry).is_equal_to(config_entry)
+    assert_that(options_flow.config_entry).is_same_as(config_entry)

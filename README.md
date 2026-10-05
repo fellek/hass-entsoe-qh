@@ -23,6 +23,8 @@ Home Assistant integration distributed through HACS that retrieves electricity p
 
 ## Installation
 
+Requires Home Assistant 2024.12 or newer.
+
 1. Add this repository to HACS as a custom repository.
 2. Install the `ENTSO-E Energy Prices` integration.
 3. In Home Assistant, go to `Settings → Devices & Services → Add Integration` and select `ENTSO-E Energy Prices`.

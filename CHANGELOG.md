@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.4.19 - 2026-10-05
+
+- The options dialog (`Configure`) opens again. Home Assistant 2025.12 no longer lets integrations set `config_entry` on an options flow, which made the dialog fail with `AttributeError: property 'config_entry' ... has no setter`.
+- Requires Home Assistant 2024.12 or newer, the first release that provides `config_entry` to options flows itself.
+
 ## 0.4.18 - 2026-10-04
 
 - `prices_today` and `prices_tomorrow` now contain the full day instead of the first 10 entries; the `truncated` flag is gone and `total_points` matches the list length.
